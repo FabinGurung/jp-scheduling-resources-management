@@ -30,6 +30,16 @@ The public schedule's 160 rows are categorized as follows:
 
 **No task has been promoted to a measured, signed Narayani BOQ quantity or approved production rate.** The 65 sample/partial-sample durations must not be rebranded as measured quantities. Distinguish concrete volume, steel mass and formwork contact area; no cross-unit substitution. The 66 *source* candidate-measurement activities and 65 *preview* sample/partial estimates refer to different review scopes and should not be conflated.
 
+## Direct drawing/report source cross-check (additional independent read)
+
+The actual Drive architectural, structural and revised-analysis PDF text was reopened after the first audit commit; this goes beyond relying on prior review prose. **This is source-text consistency QA, not visual sheet validation or structural design certification.**
+
+- The July 2026 architectural drawing states proposed Block B ground `205.16 m²`, first `200.67 m²`, second `175.62 m²`, totaling `581.45 m²` for Block B. It also identifies a separate existing Block A. Floor areas are **not** structural slab/net formwork takeoff or a measured BOQ.
+- The July 2026 structural footing schedule identifies `IF1` through `IF4` plus `CF1`; source-declared nominal footing dimensions in millimetres are IF1 `1500×1500`, IF2 `1800×1800`, IF3 `2100×2100`, IF4 `2400×2400`, CF1 `4000×1500`. It labels concrete `M20` and reinforcement `Fe500`. No material demand or safe pour/fabrication quantity is inferred from these nominal schedule entries.
+- The revised structural-analysis report calls the building `G+1.5`, while the architectural drawing explicitly lists ground, first and second-floor areas. The effective model/roof scope remains **unreconciled**; a floor must not be deleted or invented merely to match either label.
+- A Narayani-specific geotechnical report was independently located and text-read in the governed warehouse. This supersedes any older *availability* assertion that the report was missing. The actual soil-class interpretation and bearing design remain matters for the responsible engineer and the latest structural review, not an automatic scheduling hold release.
+- The 15 October G02–G08 gate document records limited work-item DONE observations (foundations, columns, masonry) separately from unresolved statutory, WBS, masonry-column, plumbing, tank and foundation quality gates. There is no basis to move those observations into all-activity actual starts/finishes.
+
 ## Findings and project-specific correction queue
 
 | ID | Finding | Severity / action | Source trace |
