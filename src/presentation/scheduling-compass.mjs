@@ -106,6 +106,8 @@ export function buildSchedulingCompass({model,state,west,east,south,onSelect,onV
  anchor(linkbar,"Work output rates",canonical("work-items/productivity.html"));
  anchor(linkbar,"Material calculator",canonical("work-items/materials.html"));
  anchor(linkbar,"Reusable engine",canonical("studio/"));
+ anchor(linkbar,"Version history","https://github.com/FabinGurung/jp-scheduling-resources-management/commits/kernel-v0.2-open-source-engines/");
+ anchor(linkbar,"Published milestone","https://github.com/FabinGurung/jp-scheduling-resources-management/releases/tag/v1.16.0-skyforge-standard-schedule-template.1");
  const sourceNote=element(south,"p","desk-compass-provenance",
   "Google Drive/Sheets: governed source originals · GitHub: tested schedules, versioned logic and public-safe JSON · GitHub Actions: verification · GitHub Pages: read-only views. Field & Desk owns actual site resource records; Cost Estimation owns forecast and commercial estimates.");
  function refresh(){
