@@ -216,7 +216,7 @@
 .desk-compass-grid{display:grid;grid-template-columns:minmax(190px,230px) minmax(0,1fr) minmax(220px,275px);gap:12px;align-items:start}
 .desk-compass-centre{min-width:0}
 .desk-compass-centre .desk-ribbon{border-radius:10px 10px 0 0}
-.desk-compass-west,.desk-compass-east{position:sticky;top:82px;align-self:start;max-height:calc(100vh - 95px);overflow:auto;min-width:0;padding:16px 13px;background:#fff;border:1px solid var(--desk-line);border-radius:13px;box-shadow:0 8px 27px #23465a0b}
+.desk-compass-west,.desk-compass-east{position:sticky;top:132px;align-self:start;max-height:calc(100vh - 146px);overflow:auto;min-width:0;padding:16px 13px;background:#fff;border:1px solid var(--desk-line);border-radius:13px;box-shadow:0 8px 27px #23465a0b}
 .desk-compass-eyebrow{font-size:10px;font-weight:850;letter-spacing:.12em;color:#137f80;text-transform:uppercase;margin:0 0 8px}
 .desk-compass-west h2,.desk-compass-selected h2{font-size:16px;line-height:1.3;margin:3px 0 12px;overflow-wrap:anywhere}
 .desk-compass-west label{display:grid;gap:6px;font-weight:750;color:#365c66}
@@ -262,7 +262,7 @@
  .desk-compass-grid{grid-template-columns:minmax(180px,240px) minmax(0,1fr)}
  .desk-compass-east{grid-column:1/-1;position:static;max-height:none;display:grid;grid-template-columns:1.1fr 1fr 1fr;column-gap:16px}
  .desk-compass-east>.desk-compass-eyebrow{grid-column:1/-1}
- .desk-compass-west{top:70px}
+ .desk-compass-west{top:125px}
 }
 @media(max-width:720px){
  .desk-compass-grid{display:flex;flex-direction:column;gap:9px}
