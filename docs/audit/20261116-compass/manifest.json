@@ -1,0 +1,35 @@
+{
+  "format": "A7_GIT_PRE_POST_NAVIGATION_MANIFEST_V1",
+  "subject": "SKYFORGE_SHARED_SCHEDULING_COMPASS",
+  "ordinal": "000001",
+  "recorded": "2026-11-16",
+  "owner_module": "MOD-SCHED-001",
+  "paths": [
+    "assets/site-shell.mjs",
+    "assets/scheduling-desk.css",
+    "src/presentation/scheduling-desk.mjs",
+    "src/presentation/scheduling-compass.mjs",
+    "tests/scheduling-compass.test.mjs"
+  ],
+  "archive": {
+    "pre": "docs/audit/20261116-compass/000001_PRE.json",
+    "post": "docs/audit/20261116-compass/000001_POST.json"
+  },
+  "status": "GIT_NATIVE_PRE_POST_COMMIT_POINTERS__FULL_KERNEL_QA_PASS__PAGES_RECHECK_PENDING",
+  "source_record_authority": {
+    "drive": "human documents and Sheets reference rates",
+    "github": "scheduling engine and compiled public-safe schedules",
+    "pages": "presentation only",
+    "field": "actual site resource records",
+    "cost": "forecast, commercial estimate, BOQ"
+  },
+  "read_only_no_original_drive_id_change": true,
+  "revision_note": "Git keeps immutable PRE/POST snapshots on existing paths; controlled Google Sheets/Docs unchanged and do not need dummy Drive archives.",
+  "restore_policy": "Restore affected live paths from PRE Git commit in new non-force commit, then re-run kernel, site, source and browser QA.",
+  "qa": {
+    "kernel_run": 43862128265,
+    "kernel_passed": true,
+    "publisher_run": null,
+    "browser_run": null
+  }
+}

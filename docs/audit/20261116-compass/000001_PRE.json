@@ -1,0 +1,18 @@
+{
+  "format": "A7_GIT_SOURCE_PRE_POINTER_V1",
+  "ordinal": "000001",
+  "status": "HISTORICAL_IMMUTABLE_PRE_COMMIT",
+  "source_owner": "FabinGurung/jp-scheduling-resources-management",
+  "source_branch": "kernel-v0.2-open-source-engines",
+  "source_commit": "ede7ca3744408a5c7abac451e299a146ddc33765",
+  "paths": [
+    "assets/site-shell.mjs",
+    "assets/scheduling-desk.css",
+    "src/presentation/scheduling-desk.mjs",
+    "src/presentation/scheduling-compass.mjs",
+    "tests/scheduling-compass.test.mjs"
+  ],
+  "statement": "Git-native PRE: the original live Git paths at the last pre-UX commit; historical objects remain accessible. No Google Drive source files were edited.",
+  "pre_captured_from_existing_git_history": true,
+  "source_data_mutation": false
+}

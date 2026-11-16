@@ -1,0 +1,22 @@
+{
+  "format": "A7_GIT_SOURCE_POST_POINTER_V1",
+  "ordinal": "000001",
+  "status": "VALIDATED_POST_CANDIDATE",
+  "source_owner": "FabinGurung/jp-scheduling-resources-management",
+  "source_branch": "kernel-v0.2-open-source-engines",
+  "source_commit": "9586c9adae5a8a45974896b0c41caf1e39841bee",
+  "paths": [
+    "assets/site-shell.mjs",
+    "assets/scheduling-desk.css",
+    "src/presentation/scheduling-desk.mjs",
+    "src/presentation/scheduling-compass.mjs",
+    "tests/scheduling-compass.test.mjs"
+  ],
+  "source_validation_run": 43862128265,
+  "source_validation_outcome": "SUCCESS",
+  "model_scope": "shared presentation and tests only",
+  "no_changes_to_project_json": true,
+  "original_site_resources_untouched": true,
+  "approval_implied": false,
+  "continued_publishing_pending": true
+}
