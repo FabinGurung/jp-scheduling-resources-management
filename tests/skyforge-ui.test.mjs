@@ -77,7 +77,7 @@ test("level-0 homepage now enters one Studio; original governed Narayani and his
 test("shared Skyforge navigation has four clear destinations and one organized Reference hub",()=>{
  const shell=read("assets/site-shell.mjs"),css=read("assets/site-shell.css"),
   build=read("scripts/build-public-site.mjs"),more=read("more/index.html");
- for(const label of ["Overview","Projects","Studio","Reference"])
+ for(const label of ["Home","Projects","Studio","Reference"])
   assert.ok(shell.includes(label),"Missing global destination "+label);
  for(const page of ["projects/index.html","studio/index.html","more/index.html"])
   assert.ok(shell.includes(page),"Missing global route "+page);
