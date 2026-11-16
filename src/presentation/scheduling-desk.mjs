@@ -678,7 +678,7 @@ export function renderSchedulingDesk(model,mount,options={}){
  east.setAttribute("aria-label","East · activity details and sources");
  const ribbon=put(centre,"div","desk-ribbon");
  put(ribbon,"span","","CENTRE · SOURCE-VALIDATED WORKSPACE");
- put(ribbon,"span","","Planning only · no approved or measured field progress");
+ put(ribbon,"span","","SATURDAY HOLIDAY · 8h reference shift · 2 skilled + 3 helpers (draft) · NO write actions · NO approved actual progress");
  const modesNav=put(centre,"nav","desk-modes");
  modesNav.setAttribute("role","tablist");
  modesNav.setAttribute("aria-label","Two scheduling desk views");
