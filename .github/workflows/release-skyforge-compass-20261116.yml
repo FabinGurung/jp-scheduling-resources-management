@@ -1,0 +1,119 @@
+name: Milestone · Skyforge 2026-11-16 Five-Direction Compass
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/release-skyforge-compass-20261116.yml
+  workflow_dispatch:
+
+# One-shot, immutable release of the pinned validated kernel (NOT the publisher main branch).
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RELEASE_SHA: b111b20c065db98728bc07c2a5c5f5c5300c3024
+      RELEASE_TAG: v1.17.0-skyforge-compass-navigation.1
+      RELEASE_NOTES: docs/milestones/SKYFORGE_V1_17_SCHEDULING_COMPASS_20261116.md
+    steps:
+      - name: Check out exact validated kernel source
+        uses: actions/checkout@v4
+        with:
+          ref: b111b20c065db98728bc07c2a5c5f5c5300c3024
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Verify exact immutable source and source preservation policy
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
+          test -s "$RELEASE_NOTES"
+          test -s tests/scheduling-compass.test.mjs
+          test -s src/presentation/scheduling-compass.mjs
+          test -s docs/audit/20261116-compass/manifest.json
+          test -s docs/audit/20261116-compass/version-history.jsonl
+          grep -Fq "Five-direction Scheduling Compass" "$RELEASE_NOTES"
+          echo "Release content and owner-source governance pinned"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Re-run production engine tests at pinned release SHA
+        run: |
+          npm test
+          npm run verify:calendar
+          npm run machine:build
+          npm run machine:verify
+          npm run wbs:build
+          npm run wbs:verify
+          npm run pilot:build
+          npm run pilot:verify
+          npm run progress:build
+          npm run progress:verify
+          npm run visual:build
+          npm run visual:verify
+          npm run generic:build
+          npm run generic:verify
+          npm run site:build
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const read=p=>readFileSync(p,'utf8');
+          const component=read('dist/src/presentation/scheduling-compass.mjs');
+          const desk=read('dist/src/presentation/scheduling-desk.mjs');
+          const css=read('dist/assets/scheduling-desk.css');
+          const shell=read('dist/assets/site-shell.mjs');
+          const n=JSON.parse(read('dist/projects/narayani/schedule-v002.json'));
+          const h=JSON.parse(read('dist/projects/fishtail/harisharan-residence/schedule-v002.json'));
+          const m=JSON.parse(read('docs/audit/20261116-compass/manifest.json'));
+          for(const marker of ['WEST · PROJECT & WBS','EAST · ACTIONABLE CONTEXT','SOUTH · Continue / source history'])
+            if(!component.includes(marker))throw Error('Missing compass region '+marker);
+          if(!desk.includes('buildSchedulingCompass')||!css.includes('.desk-compass-grid'))
+            throw Error('Shared Gantt source not connected to compass');
+          if(!shell.includes('["Home","index.html"]'))throw Error('Primary nav stale');
+          if(n.activities.length!==160||n.links.length!==210||n.holds.length!==6||
+             h.activities.length!==839||h.links.length!==1321)
+             throw Error('Project source model changed across UI-only milestone');
+          if(m.qa?.browser_run!==43863288552||!m.qa?.publisher_passed||!m.qa?.kernel_passed)
+             throw Error('Version governance has not been closed with successful QA');
+          if(n.baseline_approved!==false||h.baseline_approved!==false)
+             throw Error('Unapproved planning status incorrectly promoted');
+          console.log('COMPASS RELEASE PACKAGE PASS: W/C/E/S, Home nav, preserved 160/839, QA manifest');
+          NODE
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const root='dist/';
+          const example=JSON.parse(readFileSync(root+'templates/scheduling/standard-schedule-input-v1.example.json'));
+          const schema=JSON.parse(readFileSync(root+'schemas/standard-schedule-input.schema.json'));
+          const comparison=JSON.parse(readFileSync(root+'templates/scheduling/edition-comparison.json'));
+          if(example.format!=='SKYFORGE_STANDARD_SCHEDULE_INPUT_V1')throw Error('Input template not published');
+          if(!schema.$schema||!schema.properties?.activities)throw Error('JSON Schema missing');
+          if(comparison.format!=='SKYFORGE_STANDARD_SCHEDULE_COMPARISON_V1'||comparison.projects?.length!==2)
+            throw Error('Both project views not normalized');
+          if(comparison.projects[0].counts.activities!==160||comparison.projects[1].counts.activities!==839)
+            throw Error('Unexpected project normalization');
+          console.log('Release package verified: editable source template, schema, 160/839 comparison');
+          NODE
+      - name: Create verified annotated tag and published GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            git fetch --no-tags origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+            test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$RELEASE_SHA"
+          else
+            git tag -a "$RELEASE_TAG" "$RELEASE_SHA" -m 'Skyforge 2026-11-16: source-safe five-direction scheduling UI with cross-project browser QA; no construction approval'
+            git push origin "refs/tags/$RELEASE_TAG"
+          fi
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Existing published milestone release found; validating"
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --target "$RELEASE_SHA" --title 'Skyforge v1.17 · Five-Direction Scheduling Compass' --notes-file "$RELEASE_NOTES" --latest=false
+          fi
+          test "$(gh release view "$RELEASE_TAG" --json tagName --jq .tagName)" = "$RELEASE_TAG"
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = 'false'
+          test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$RELEASE_SHA"
+          echo 'Release tag, target SHA and published state verified'
