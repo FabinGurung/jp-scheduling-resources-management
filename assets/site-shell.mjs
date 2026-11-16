@@ -180,7 +180,7 @@ function createShell(){
  const wrap=document.createElement("div");wrap.className="sf-inner";header.append(wrap);
  const brand=entry(wrap,"✦ SKYFORGE","index.html");brand.className="sf-mark";brand.setAttribute("aria-label","Skyforge home");
  const navigation=document.createElement("nav");navigation.className="sf-menu";navigation.setAttribute("aria-label","Site engineer views");
- const tabs=[["Overview","index.html"],["Projects","projects/index.html"],["Studio","studio/index.html"],["Reference","more/index.html"]];
+ const tabs=[["Home","index.html"],["Projects","projects/index.html"],["Studio","studio/index.html"],["Reference","more/index.html"]];
  for(const [label,target] of tabs){
   const a=entry(navigation,label,target);
   const key=pageKey();
@@ -189,7 +189,7 @@ function createShell(){
   const isReference=key.startsWith("more/")||key.startsWith("knowledge/")||
    key.startsWith("how/")||key.startsWith("work-items/")||
    key.startsWith("machine/")||["planner.html","kernel-lab.html","advanced.html","roadmap.html"].includes(key);
-  if((home&&label==="Overview")||(isProject&&label==="Projects")||
+  if((home&&label==="Home")||(isProject&&label==="Projects")||
      (isStudio&&label==="Studio")||(isReference&&label==="Reference"))
    a.setAttribute("aria-current","page");
  }
