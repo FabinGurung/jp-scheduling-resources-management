@@ -21,7 +21,7 @@ test("one source-safe compass module is shared by Narayani and Harisharan with n
  assert.match(desk,/const frame=put\(mount,"div","desk-compass-grid"\)/);
  for(const part of ["WEST · PROJECT & WBS","EAST · ACTIONABLE CONTEXT",
   "SOUTH · Continue / source history","Search WBS navigation","Searchable WBS and project navigation",
-  "Projects","Work output rates","Material calculator"])
+  "All projects","Work output rates","Material calculator"])
   assert.ok(comp.includes(part),part);
  assert.doesNotMatch(comp,/jp-field-desk-library|\/api\/|drive\.google\.com\/file/);
  for(const klass of ["desk-compass-grid","desk-compass-west","desk-compass-east","desk-compass-south"])
