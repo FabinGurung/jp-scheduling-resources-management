@@ -1,7 +1,7 @@
 {
   "format": "A7_GIT_SOURCE_POST_POINTER_V1",
   "ordinal": "000001",
-  "status": "VALIDATED_POST_CANDIDATE",
+  "status": "POST_SOURCE_QA_AND_LIVE_PAGES_VERIFIED",
   "source_owner": "FabinGurung/jp-scheduling-resources-management",
   "source_branch": "kernel-v0.2-open-source-engines",
   "source_commit": "9586c9adae5a8a45974896b0c41caf1e39841bee",
@@ -18,5 +18,18 @@
   "no_changes_to_project_json": true,
   "original_site_resources_untouched": true,
   "approval_implied": false,
-  "continued_publishing_pending": true
+  "continued_publishing_pending": true,
+  "final_source_lineage_commit": "fab8cba1dcb6ca71e4c6d1a0021a397296aaabfa",
+  "full_kernel_run": 43862498994,
+  "authenticated_publisher_run": 43862677548,
+  "live_browser_qa_run": 43863288552,
+  "live_browser_checks_passed": 10,
+  "live_device_matrix": [
+    "1440x900 Narayani v002",
+    "1440x900 Harisharan v002",
+    "390x844 Narayani v002",
+    "390x844 Harisharan v002"
+  ],
+  "original_project_data_unchanged": true,
+  "external_field_resource_imports": 0
 }

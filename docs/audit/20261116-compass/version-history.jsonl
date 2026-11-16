@@ -1,0 +1,2 @@
+{"ordinal":"000001","phase":"PRE","existing_git_commit":"ede7ca3744408a5c7abac451e299a146ddc33765","scope":"Source-preserved navigation before the UI-only changes","archive_pointer":"docs/audit/20261116-compass/000001_PRE.json","drive_edits":0}
+{"ordinal":"000001","phase":"POST","post_ui_commit":"9586c9adae5a8a45974896b0c41caf1e39841bee","kernel_run":43862498994,"pages_run":43862677548,"browser_run":43863288552,"owner_schedules_unchanged":true,"archive_pointer":"docs/audit/20261116-compass/000001_POST.json","drive_edits":0}

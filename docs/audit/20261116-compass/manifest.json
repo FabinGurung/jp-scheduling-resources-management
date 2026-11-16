@@ -15,7 +15,7 @@
     "pre": "docs/audit/20261116-compass/000001_PRE.json",
     "post": "docs/audit/20261116-compass/000001_POST.json"
   },
-  "status": "GIT_NATIVE_PRE_POST_COMMIT_POINTERS__FULL_KERNEL_QA_PASS__PAGES_RECHECK_PENDING",
+  "status": "POST_VERIFIED_KERNEL__AUTHENTICATED_PAGES__CHROMIUM_DESKTOP_MOBILE",
   "source_record_authority": {
     "drive": "human documents and Sheets reference rates",
     "github": "scheduling engine and compiled public-safe schedules",
@@ -27,9 +27,19 @@
   "revision_note": "Git keeps immutable PRE/POST snapshots on existing paths; controlled Google Sheets/Docs unchanged and do not need dummy Drive archives.",
   "restore_policy": "Restore affected live paths from PRE Git commit in new non-force commit, then re-run kernel, site, source and browser QA.",
   "qa": {
-    "kernel_run": 43862128265,
+    "kernel_run": 43862498994,
     "kernel_passed": true,
-    "publisher_run": null,
-    "browser_run": null
-  }
+    "publisher_run": 43862677548,
+    "publisher_passed": true,
+    "browser_run": 43863288552,
+    "browser_passed": true,
+    "original_project_data_unchanged": true,
+    "engineering_signoff_implied": false
+  },
+  "post_ui_commit": "9586c9adae5a8a45974896b0c41caf1e39841bee",
+  "post_audit_commit": "fab8cba1dcb6ca71e4c6d1a0021a397296aaabfa",
+  "live_preview_urls": [
+    "https://fabingurung.github.io/jp-scheduling-resources-management/projects/narayani/schedule-v002.html",
+    "https://fabingurung.github.io/jp-scheduling-resources-management/projects/fishtail/harisharan-residence/schedule-v002.html"
+  ]
 }
