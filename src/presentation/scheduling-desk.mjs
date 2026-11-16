@@ -1,4 +1,5 @@
 import {drawGanttConnectors} from "./gantt-dependencies.mjs";
+import {buildSchedulingCompass} from "./scheduling-compass.mjs";
 import {applySaturdayHouseScenario,isHouseWorkDay,REFERENCE_HOUSE_CALENDAR} from "../reference/house-saturday-calendar.mjs";
 import {validateDraftResourceRoster,resourceRowsForSelected} from "../reference/selected-resource-drafts.mjs";
 import {validateMaterialCatalog,projectMaterialScopes} from "../reference/material-planner.mjs";
@@ -300,7 +301,7 @@ function setupActivityTable(container,model,state,showDetails){
    if(row)wrap.scrollTop=Math.max(0,wrap.scrollTop+row.getBoundingClientRect().top-wrap.getBoundingClientRect().top-74);
   }
  }
- return {render,revealSelected};
+ return {render,revealSelected,setWbs(value){wbs.value=value;render();},setSearch(value){search.value=value;render();}};
 }
 /** Both the aligned Gantt bars and the Gregorian calendar come from the exact
  * same immutable, source-validated activity start/finish date fields. The
@@ -669,10 +670,16 @@ export function renderSchedulingDesk(model,mount,options={}){
  inspectDeskModel(model);
  mount.replaceChildren();
  createHeader(mount,model,options);
- const ribbon=put(mount,"div","desk-ribbon");
- put(ribbon,"span","","NORTH · View controls");
- put(ribbon,"span","","ONE source-pinned schedule · SATURDAY HOLIDAY · 8h reference shift · 2 skilled + 3 helpers (draft) · NO write actions");
- const modesNav=put(mount,"nav","desk-modes");
+ const frame=put(mount,"div","desk-compass-grid");
+ const west=put(frame,"aside","desk-compass-west");
+ west.setAttribute("aria-label","West · searchable WBS and sections");
+ const centre=put(frame,"div","desk-compass-centre");
+ const east=put(frame,"aside","desk-compass-east");
+ east.setAttribute("aria-label","East · activity details and sources");
+ const ribbon=put(centre,"div","desk-ribbon");
+ put(ribbon,"span","","CENTRE · SOURCE-VALIDATED WORKSPACE");
+ put(ribbon,"span","","Planning only · no approved or measured field progress");
+ const modesNav=put(centre,"nav","desk-modes");
  modesNav.setAttribute("role","tablist");
  modesNav.setAttribute("aria-label","Two scheduling desk views");
  const panelMap=new Map(),btnMap=new Map();
@@ -680,7 +687,7 @@ export function renderSchedulingDesk(model,mount,options={}){
   const b=put(modesNav,"button","",title);b.type="button";b.setAttribute("role","tab");
   b.addEventListener("click",()=>choose(mode));
   btnMap.set(mode,b);
-  const panel=put(mount,"section","desk-surface");
+  const panel=put(centre,"section","desk-surface");
   panel.setAttribute("role","tabpanel");
   panel.dataset.deskView=mode;panel.hidden=true;panelMap.set(mode,panel);
  }
@@ -695,8 +702,25 @@ export function renderSchedulingDesk(model,mount,options={}){
  firstRibbon.textContent="WEST · Seven activity fields  |  EAST · Aligned Gantt  |  SOUTH · Resource, predecessor and successor details";
  const south=put(first,"div","desk-south-wrap");
  const details=put(first,"div");
- const table=setupActivityTable(south,model,state,()=>{renderSouth(details,model,state,options);});
+ let compass=null;
+ function refreshDetails(){
+  renderSouth(details,model,state,options);
+  compass?.refresh();
+ }
+ const table=setupActivityTable(south,model,state,refreshDetails);
  renderSouth(details,model,state,options);
+ const trail=put(mount,"footer","desk-compass-south");
+ compass=buildSchedulingCompass({
+  model,state,west,east,south:trail,
+  onSelect:id=>select(id),
+  onView:mode=>choose(mode),
+  onWbs:id=>table.setWbs(id),
+  onDetails:name=>{
+   const btn=Array.from(details.querySelectorAll(".desk-detail-tabs button"))
+    .find(b=>b.dataset.detail===name);
+   if(btn){btn.click();details.scrollIntoView({block:"nearest",behavior:"auto"});}
+  }
+ });
  const calendar=model.relative_origin
   ?renderRelativeCalendar(panelMap.get("calendar"),model,state,id=>select(id),()=>choose("activities"))
   :renderYearCalendar(panelMap.get("calendar"),model,state,id=>select(id),()=>choose("activities"));
@@ -704,7 +728,7 @@ export function renderSchedulingDesk(model,mount,options={}){
   if(!model.activities.some(a=>a.id===id))throw Error("Unknown selected source activity");
   state.selected=id;
   table.render();
-  renderSouth(details,model,state,options);
+  refreshDetails();
   if(state.activeMode==="calendar")calendar.render();
  }
  function choose(requested){
@@ -719,11 +743,12 @@ export function renderSchedulingDesk(model,mount,options={}){
   }
   if(mode==="activities"){
    table.render(); // source selection remains synchronized between views
-   renderSouth(details,model,state,options);
+   refreshDetails();
    if(previous==="calendar")table.revealSelected();
   }else{
    calendar.followSelected({scroll:true});
   }
+  compass.setMode(mode);
   if(options.updateHash!==false&&typeof history!=="undefined")
    history.replaceState(null,"","#"+mode);
  }
