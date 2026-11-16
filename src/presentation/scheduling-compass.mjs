@@ -75,7 +75,12 @@ export function buildSchedulingCompass({model,state,west,east,south,onSelect,onV
    label.title=g.id;
    element(b,"small","",g.id+" · "+g.count+" activities");
    b.setAttribute("aria-pressed",String(g.id===state.wbsFilter));
-   b.addEventListener("click",()=>{state.wbsFilter=g.id;onWbs(g.id);refresh();onView("activities");});
+   b.addEventListener("click",()=>{
+    state.wbsFilter=g.id;onWbs(g.id);
+    const chosen=model.activities.find(a=>a.wbs_id===g.id);
+    if(chosen&&chosen.id!==state.selected)onSelect(chosen.id);
+    onView("activities");refresh();
+   });
   }
   status.textContent=found.length===0?"No matching WBS in the published source.":show.length+" of "+found.length+" matching WBS groups";
   if(groupsWithWork.length)status.textContent+=" · "+groupsWithWork.length+" populated branches";
