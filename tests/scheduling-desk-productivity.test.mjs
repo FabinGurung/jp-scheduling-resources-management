@@ -52,9 +52,14 @@ test("Gregorian dates and two linked views use true months and source-exclusive 
  const ui=read("src/presentation/scheduling-desk.mjs");
  for(const col of ["Activity ID","Activity name","WBS","Original duration","Start","Finish*","Predecessors"])
   assert.ok(ui.includes('"'+col+'"'));
- for(const token of ["NORTH · View controls","WEST · Seven activity fields","EAST · Aligned Gantt",
+ for(const token of ["CENTRE · SOURCE-VALIDATED WORKSPACE","WEST · Seven activity fields","EAST · Aligned Gantt",
   "SOUTH · Primavera-style Activity Details","Predecessors","Successors"])
   assert.ok(ui.includes(token));
+ assert.match(ui,/buildSchedulingCompass/);
+ assert.match(ui,/desk-compass-grid/);
+ const frame=read("src/presentation/scheduling-compass.mjs");
+ for(const title of ["WEST · PROJECT & WBS","EAST · ACTIONABLE CONTEXT","SOUTH · Continue / source history"])
+  assert.ok(frame.includes(title),title);
  assert.doesNotMatch(ui,/layoutOrganicSkillTree|renderConstellation|renderChecklist|localStorage/);
 });
 test("source/relationship validator refuses fake progress or unknown links",()=>{
