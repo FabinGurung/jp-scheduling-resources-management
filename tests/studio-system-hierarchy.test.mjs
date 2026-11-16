@@ -16,7 +16,7 @@ test("Level 0 navigation presents Projects and Studio as clear siblings; demo re
   assert.ok(studio.includes('href="../projects/'+name+(name==="narayani"?'/beta.html':'/')+'"'));
   assert.ok(shell.includes('studio/projects/'+name+'/index.html'));
  }
- assert.ok(shell.includes('const tabs=[["Overview","index.html"],["Projects","projects/index.html"],["Studio","studio/index.html"],["Reference","more/index.html"]]'));
+ assert.ok(shell.includes('const tabs=[["Home","index.html"],["Projects","projects/index.html"],["Studio","studio/index.html"],["Reference","more/index.html"]]'));
  assert.doesNotMatch(shell,/More ▾/);
  assert.match(read("more/index.html"),/Methods, tools and archives/);
 });
