@@ -210,3 +210,71 @@
 .desk-extra-crew{border:1px solid #d8e7e6;border-radius:9px;padding:10px 12px;margin:9px 0;background:#f8fbfa}
 .desk-extra-crew summary{cursor:pointer;font-weight:800;color:#346b77;font-size:12px;padding:5px 0}
 .desk-material-link{display:inline-flex;margin:9px 0!important;background:#ecf9f5;padding:9px 12px;border-radius:9px;border:1px solid #b7d9d0}
+
+
+/* 16 Nov 2026: shared source-safe compass — layout not project data. */
+.desk-compass-grid{display:grid;grid-template-columns:minmax(190px,230px) minmax(0,1fr) minmax(220px,275px);gap:12px;align-items:start}
+.desk-compass-centre{min-width:0}
+.desk-compass-centre .desk-ribbon{border-radius:10px 10px 0 0}
+.desk-compass-west,.desk-compass-east{position:sticky;top:82px;align-self:start;max-height:calc(100vh - 95px);overflow:auto;min-width:0;padding:16px 13px;background:#fff;border:1px solid var(--desk-line);border-radius:13px;box-shadow:0 8px 27px #23465a0b}
+.desk-compass-eyebrow{font-size:10px;font-weight:850;letter-spacing:.12em;color:#137f80;text-transform:uppercase;margin:0 0 8px}
+.desk-compass-west h2,.desk-compass-selected h2{font-size:16px;line-height:1.3;margin:3px 0 12px;overflow-wrap:anywhere}
+.desk-compass-west label{display:grid;gap:6px;font-weight:750;color:#365c66}
+.desk-compass-search{width:100%;min-height:42px;border:1px solid #b9d7d8;border-radius:9px;padding:8px 9px;color:#234455}
+.desk-compass-toc{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:13px 0;padding-bottom:13px;border-bottom:1px solid #dce9eb}
+.desk-compass-toc button,.desk-compass-all,.desk-compass-wbs-button,.desk-compass-actions button,.desk-compass-relations button,.desk-compass-trail button{background:#f6fbfa;color:#236971;border:1px solid #ccdee0;border-radius:8px;text-align:left;cursor:pointer;font:inherit;padding:9px;line-height:1.3}
+.desk-compass-toc button{font-size:11px;text-align:center;min-height:44px}
+.desk-compass-toc button[aria-current=page]{background:#cfeee8;border-color:#78bab5;font-weight:850}
+.desk-compass-all{width:100%;margin:8px 0 11px;font-weight:800}
+.desk-compass-wbs{display:grid;gap:5px}
+.desk-compass-wbs-button{width:100%;padding:9px 8px 9px calc(8px + var(--wbs-depth, 0)*7px);overflow-wrap:anywhere}
+.desk-compass-wbs-button:hover,.desk-compass-relations button:hover,.desk-compass-trail button:not(:disabled):hover{background:#e7f6f2}
+.desk-compass-wbs-button[aria-pressed=true]{background:#e1f5ee;border-color:#68b0a7}
+.desk-compass-wbs-button strong{display:block;font-size:11px}
+.desk-compass-wbs-button small{display:block;color:#65808d;font-size:10px;margin-top:3px}
+.desk-compass-note{color:#63808e;font-size:11px;line-height:1.5}
+.desk-compass-selected{border-bottom:1px solid #dce9eb;padding-bottom:12px;margin-bottom:12px}
+.desk-compass-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.desk-compass-actions button{font-size:11px;font-weight:740;min-height:39px;text-align:center}
+.desk-compass-alert{font-size:11px;line-height:1.5;padding:10px;border-left:3px solid #c69231;border-radius:7px;background:#fff5e4;color:#72551f}
+.desk-compass-east h3{font-size:12px;color:#275968;margin:12px 0 7px}
+.desk-compass-relations{display:grid;gap:5px}
+.desk-compass-relations button{width:100%;font-size:11px}
+.desk-compass-sources{border-top:1px solid #dce9eb;margin-top:15px;padding-top:4px}
+.desk-compass-source-link{display:block;overflow-wrap:anywhere;margin:7px 0!important;font-size:11px;line-height:1.4}
+.desk-compass-south{border:1px solid var(--desk-line);border-radius:12px;background:#fff;padding:16px 18px;margin:13px 0 25px}
+.desk-compass-trail-header{display:flex;justify-content:space-between;align-items:start;gap:12px;flex-wrap:wrap}
+.desk-compass-trail-header strong{color:#246e72}
+.desk-compass-trail-header small{color:#647f88}
+.desk-compass-trail{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:13px 0}
+.desk-compass-trail button{min-height:43px}
+.desk-compass-trail button:last-child{text-align:right}
+.desk-compass-trail button:disabled{opacity:.55;cursor:not-allowed}
+.desk-compass-trail-links{display:flex;flex-wrap:wrap;gap:8px;border-top:1px solid #e6eeee;padding-top:12px}
+.desk-compass-trail-links a{padding:8px 10px;border:1px solid #d3e4e5;border-radius:8px;background:#f4f9fa;font-size:11px;text-decoration:none}
+.desk-compass-provenance{font-size:11px;color:#617b86;line-height:1.55;margin:13px 0 0}
+.desk-compass-grid :is(button,input,a):focus-visible{outline:3px solid #efa93a;outline-offset:2px}
+@media(max-width:1290px){
+ .desk-compass-grid{grid-template-columns:minmax(175px,210px) minmax(0,1fr) minmax(190px,235px);gap:9px}
+ .desk-compass-west,.desk-compass-east{padding:12px 10px}
+}
+@media(max-width:1030px){
+ .desk-compass-grid{grid-template-columns:minmax(180px,240px) minmax(0,1fr)}
+ .desk-compass-east{grid-column:1/-1;position:static;max-height:none;display:grid;grid-template-columns:1.1fr 1fr 1fr;column-gap:16px}
+ .desk-compass-east>.desk-compass-eyebrow{grid-column:1/-1}
+ .desk-compass-west{top:70px}
+}
+@media(max-width:720px){
+ .desk-compass-grid{display:flex;flex-direction:column;gap:9px}
+ .desk-compass-west,.desk-compass-centre,.desk-compass-east{width:100%;min-width:0}
+ .desk-compass-west,.desk-compass-east{position:static;max-height:none;overflow:visible}
+ .desk-compass-west .desk-compass-wbs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-height:185px;overflow-y:auto}
+ .desk-compass-east{display:block}
+ .desk-compass-toc{grid-template-columns:1fr 1fr}
+ .desk-compass-trail-links a{flex:1 1 44%;text-align:center}
+}
+@media(max-width:390px){
+ .desk-compass-west .desk-compass-wbs{grid-template-columns:1fr;max-height:145px}
+ .desk-compass-trail{grid-template-columns:1fr}
+ .desk-compass-trail button:last-child{text-align:left}
+}
