@@ -158,6 +158,18 @@ jobs:
             report.images.push("narayani-mobile-gantt.png");
             assert.deepEqual(mobileErrors,[],"No uncaught mobile JS errors");
             pass("Mobile responsive","390px viewport, usable W/C/E/S panes, touch calendar switching and no JS errors");
+            await mobile.goto(base+"projects/fishtail/harisharan-residence/schedule-v002.html",
+              {waitUntil:"domcontentloaded",timeout:45000});
+            await mobile.locator(".desk-compass-selected h2").waitFor({timeout:30000});
+            assert.match(await mobile.locator(".desk-source").first().innerText(),/839 activities/);
+            assert.ok(await mobile.locator(".desk-compass-west").isVisible());
+            assert.ok(await mobile.locator(".desk-compass-east").isVisible());
+            await mobile.locator('.desk-compass-toc button[data-compass-view="calendar"]').click();
+            assert.equal(await mobile.getByRole("tab",{name:"Year calendar"}).getAttribute("aria-selected"),"true");
+            await mobile.screenshot({path:join(out,"harisharan-mobile-calendar.png"),fullPage:true});
+            report.images.push("harisharan-mobile-calendar.png");
+            assert.deepEqual(mobileErrors,[],"No uncaught mobile errors across projects");
+            pass("Harisharan mobile","839-activity dated scenario uses same compass and year calendar at 390px");
           }catch(error){
             report.failure=String(error.stack||error);
             for(const [p,name] of [[page,"desktop-failure.png"],[mobile,"mobile-failure.png"]]){
