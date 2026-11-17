@@ -53,7 +53,7 @@ test("Gregorian dates and two linked views use true months and source-exclusive 
  for(const col of ["Activity ID","Activity name","WBS","Original duration","Start","Finish*","Predecessors"])
   assert.ok(ui.includes('"'+col+'"'));
  for(const token of ["CENTRE · SOURCE-VALIDATED WORKSPACE","WEST · Seven activity fields","EAST · Aligned Gantt",
-  "SOUTH · Primavera-style Activity Details","Predecessors","Successors"])
+  "EAST · Primavera-style Activity Details","Predecessors","Successors"])
   assert.ok(ui.includes(token));
  assert.match(ui,/buildSchedulingCompass/);
  assert.match(ui,/desk-compass-grid/);
@@ -90,7 +90,7 @@ test("four published desk entrypoints and pinned productivity memory wall are al
  for(const file of ["projects/narayani/desk.html","projects/generic/desk-clinic.html",
   "projects/generic/desk-bridge.html","projects/generic/desk-uploaded-wbs.html"])
   assert.match(read(file),/src\/presentation\/scheduling-desk\.mjs/);
- assert.match(read("src/presentation/project-catalog.mjs"),/narayani\/desk\.html#activities/);
- assert.match(read("src/presentation/project-catalog.mjs"),/narayani\/desk\.html#calendar/);
+ assert.match(read("src/presentation/project-catalog.mjs"),/Open the scheduling desk/);
+ assert.doesNotMatch(read("src/presentation/project-catalog.mjs"),/anchor\(links,"v002 Block B planning preview/);
  assert.doesNotMatch(read("src/presentation/project-catalog.mjs"),/anchor\(links,"Before \/ Current \/ After/);
 });
