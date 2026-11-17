@@ -1,5 +1,7 @@
 import {drawGanttConnectors} from "./gantt-dependencies.mjs";
 import {buildSchedulingCompass} from "./scheduling-compass.mjs";
+import {renderActivityPackages} from "./scheduling-packages.mjs";
+import {renderDrawingReferences} from "./scheduling-drawings.mjs";
 import {applySaturdayHouseScenario,isHouseWorkDay,REFERENCE_HOUSE_CALENDAR} from "../reference/house-saturday-calendar.mjs";
 import {validateDraftResourceRoster,resourceRowsForSelected} from "../reference/selected-resource-drafts.mjs";
 import {validateMaterialCatalog,projectMaterialScopes} from "../reference/material-planner.mjs";
@@ -16,7 +18,7 @@ const allowed=Object.freeze({
  "community-clinic":{file:"../../projects/generic/community-clinic.json",project:"DEMO_CLINIC"},
  "pedestrian-bridge":{file:"../../projects/generic/pedestrian-bridge.json",project:"DEMO_BRIDGE"}
 });
-const modes=["activities","calendar"];
+const modes=["activities","calendar","packages","drawings"];
 const validISO=s=>typeof s==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s+"T00:00:00Z"))&&new Date(s+"T00:00:00Z").toISOString().slice(0,10)===s;
 const utc=s=>new Date(s+"T00:00:00Z").getTime();
 const addDays=(day,n)=>new Date(utc(day)+n*86400000).toISOString().slice(0,10);
@@ -325,7 +327,7 @@ export function calendarDaySnapshot(model,day,selectedId=null){
   selectedScheduled:all.has(selectedId)
  };
 }
-function renderYearCalendar(container,model,state,select,openActivities){
+function renderYearCalendar(container,model,state,select,openActivities,onDay){
  const top=put(container,"div","desk-calendar-header");
  const title=put(top,"h2","","");
  const prev=put(top,"button","","← Previous year");prev.type="button";
@@ -414,7 +416,7 @@ function renderYearCalendar(container,model,state,select,openActivities){
     if(snap.selectedWorking)put(b,"small","desk-calendar-selected-mark","● Selected");
     if(snap.selectedBoundary&&!snap.selectedWorking)put(b,"small","desk-calendar-boundary-mark","◆ Selected");
     b.addEventListener("click",()=>{
-     state.day=date;render();renderDay(date);
+     state.day=date;render();renderDay(date);onDay?.(date,snap);
     });
    }
   }
@@ -446,7 +448,7 @@ function renderYearCalendar(container,model,state,select,openActivities){
  render();
  return {followSelected,render,renderDay};
 }
-function renderRelativeCalendar(container,model,state,select,openActivities){
+function renderRelativeCalendar(container,model,state,select,openActivities,onDay){
  const controls=put(container,"div","desk-calendar-header");
  put(controls,"h2","","Relative week calendar");
  const weekSelect=put(controls,"select");weekSelect.setAttribute("aria-label","Planning week");
@@ -461,12 +463,15 @@ function renderRelativeCalendar(container,model,state,select,openActivities){
   for(let offset=0;offset<7;offset++){
    const slot=week*7+offset;
    const day=put(panel,"section","desk-relative-day");
-   put(day,"h3","",["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][offset]);
+   const label=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][offset];
+   const focus=put(day,"button","desk-relative-day-focus","Inspect "+label+" · Week "+(week+1)+" in East");
+   focus.type="button";focus.dataset.relativeSlot=String(slot);
+   focus.addEventListener("click",()=>onDay?.(addDays(model.relative_origin,slot),{relative_week:week+1,day:label,slot}));
    if(offset===6)put(day,"small","","Work holiday · elapsed waits continue");
    for(const item of model.activities.filter(a=>a.start_date&&((a.start<=slot&&slot<a.finish&&(offset<6||isElapsed(a)))||a.finish===slot))){
     const action=put(day,"button",state.selected===item.id?"desk-calendar-selected-mark":"",`${item.id} · ${item.finish===slot?"Finish boundary · ":""}${item.title}`);
     action.type="button";
-    action.addEventListener("click",()=>{select(item.id);openActivities();});
+    action.addEventListener("click",()=>select(item.id));
    }
   }
  }
@@ -681,9 +686,14 @@ export function renderSchedulingDesk(model,mount,options={}){
  put(ribbon,"span","","SATURDAY HOLIDAY · 8h reference shift · 2 skilled + 3 helpers (draft) · NO write actions · NO approved actual progress");
  const modesNav=put(centre,"nav","desk-modes");
  modesNav.setAttribute("role","tablist");
- modesNav.setAttribute("aria-label","Two scheduling desk views");
+ modesNav.setAttribute("aria-label","Four synchronized scheduling workspace views");
  const panelMap=new Map(),btnMap=new Map();
- for(const [mode,title] of [["activities","Activities + Gantt"],["calendar",model.relative_origin?"Relative week calendar":"Year calendar"]]){
+ for(const [mode,title] of [
+  ["activities","Activities + Gantt"],
+  ["calendar",model.relative_origin?"Relative week calendar":"Year calendar"],
+  ["packages","Work packages"],
+  ["drawings","Working drawings"]
+ ]){
   const b=put(modesNav,"button","",title);b.type="button";b.setAttribute("role","tab");
   b.addEventListener("click",()=>choose(mode));
   btnMap.set(mode,b);
