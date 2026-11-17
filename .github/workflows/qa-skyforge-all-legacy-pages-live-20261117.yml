@@ -1,0 +1,137 @@
+name: QA · Skyforge all historical Pages routes and mobile shell
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/qa-skyforge-all-legacy-pages-live-20261117.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  route-and-mobile-qa:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 73a3d86a1bfb11d4cdedaa170980addfe2dfdeb0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Reproduce source-only public HTML inventory
+        run: |
+          npm run machine:build
+          npm run wbs:build
+          npm run pilot:build
+          npm run progress:build
+          npm run visual:build
+          npm run generic:build
+          npm run site:build
+      - name: Install isolated Chromium
+        run: |
+          mkdir -p "$RUNNER_TEMP/skyforge-all-routes"
+          cd "$RUNNER_TEMP/skyforge-all-routes"
+          printf '{"type":"module","private":true}\n' > package.json
+          npm install --no-audit --no-fund --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Audit every published HTML route and all mobile navigation shells
+        run: |
+          cat > "$RUNNER_TEMP/skyforge-all-routes/qa.mjs" <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readdir,readFile,mkdir,writeFile} from 'node:fs/promises';
+          import {join} from 'node:path';
+          import {chromium} from 'playwright';
+          const root='https://fabingurung.github.io/jp-scheduling-resources-management/';
+          const artifacts=join(process.env.RUNNER_TEMP,'skyforge-all-routes','results');
+          await mkdir(artifacts,{recursive:true});
+          async function walk(dir,prefix=''){
+           const out=[];
+           for(const x of await readdir(dir,{withFileTypes:true})){
+            const rel=prefix+x.name,abs=join(dir,x.name);
+            if(x.isDirectory())out.push(...await walk(abs,rel+'/'));
+            else if(x.isFile()&&x.name.endsWith('.html'))out.push(rel);
+           }return out;
+          }
+          const names=(await walk('dist')).sort();
+          const routed=[],redirect=[],errors=[];
+          for(const p of names){
+           const html=await readFile(join('dist',p),'utf8');
+           if(/http-equiv=["']refresh/i.test(html))redirect.push(p);
+           else routed.push(p);
+          }
+          assert.equal(routed.length,66,'The canonical 66 user-facing HTML routes must be preserved');
+          assert.equal(redirect.length,15,'The 15 historical redirect URLs must survive');
+          const result={checked:new Date().toISOString(),routes:[],mobile:[],desktop:[],redirects:redirect,failures:[]};
+          let cursor=0;
+          async function auditRoute(){
+           while(cursor<names.length){
+            const path=names[cursor++];
+            try{
+             const r=await fetch(root+path+'?qa=20261117-legacy',{signal:AbortSignal.timeout(25000),cache:'no-store'});
+             assert.equal(r.status,200,path+' returned HTTP '+r.status);
+             const html=await r.text();
+             assert.match(html,/<html/i,path);
+             if(routed.includes(path)){
+              assert.match(html,/site-shell\.css/i,path);
+              assert.match(html,/site-shell\.mjs/i,path);
+             }else assert.match(html,/http-equiv=["']refresh/i,path);
+             result.routes.push({path,status:r.status});
+            }catch(e){result.failures.push({path,kind:'HTTP_OR_HTML',error:String(e)});}
+           }
+          }
+          await Promise.all(Array.from({length:8},()=>auditRoute()));
+          assert.equal(result.routes.length,names.length,'Every legacy and current route must be reachable: '+JSON.stringify(result.failures));
+          const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+          try{
+           const mobile=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+           for(const path of routed){
+            const localErrors=[];
+            const listener=e=>localErrors.push(e.message);
+            mobile.on('pageerror',listener);
+            try{
+             await mobile.goto(root+path,{waitUntil:'domcontentloaded',timeout:40000});
+             await mobile.locator('header.sf-global .sf-menu').waitFor({timeout:15000});
+             const nav=await mobile.locator('header.sf-global .sf-menu').innerText();
+             for(const text of ['Home','Projects','Studio','Reference'])
+              assert.ok(nav.includes(text),'Missing '+text+' on '+path);
+             assert.ok(!nav.includes('Overview'),path+' duplicates old Overview');
+             result.mobile.push({path,nav:'PASS',uncaught_errors:localErrors.slice(0,3)});
+             if(localErrors.length)result.failures.push({path,kind:'PAGE_JS_ERROR',error:localErrors.slice(0,3).join(' | ')});
+            }catch(e){result.failures.push({path,kind:'MOBILE_NAV',error:String(e)});}
+            finally{mobile.off('pageerror',listener);}
+           }
+           const desktop=await browser.newPage({viewport:{width:1450,height:900}});
+           const samples=['index.html','projects/index.html','studio/index.html','more/index.html',
+            'projects/narayani/index.html','projects/narayani/visual.html','projects/narayani/desk.html',
+            'projects/narayani/schedule-v002.html','projects/fishtail/narayani-parajuli-residence/index.html',
+            'projects/fishtail/harisharan-residence/schedule-v002.html','work-items/index.html',
+            'work-items/materials.html','work-items/productivity.html','how/index.html'];
+           for(const path of samples){
+            try{
+             await desktop.goto(root+path,{waitUntil:'domcontentloaded',timeout:40000});
+             await desktop.locator('header.sf-global .sf-menu').waitFor({timeout:15000});
+             result.desktop.push(path);
+            }catch(e){result.failures.push({path,kind:'DESKTOP_NAV',error:String(e)});}
+           }
+           await mobile.goto(root+'studio/',{waitUntil:'domcontentloaded'});
+           await mobile.screenshot({path:join(artifacts,'studio-mobile.png')});
+           await desktop.goto(root+'projects/narayani/desk.html',{waitUntil:'domcontentloaded'});
+           await desktop.locator('.desk-compass-selected h2').waitFor();
+           await desktop.screenshot({path:join(artifacts,'narayani-desk-desktop.png')});
+          }finally{await browser.close();}
+          await writeFile(join(artifacts,'report.json'),JSON.stringify(result,null,2));
+          if(result.failures.length)throw Error('Legacy mobile/navigation debt remains: '+JSON.stringify(result.failures.slice(0,12)));
+          assert.equal(result.mobile.length,66);
+          assert.equal(result.desktop.length,14);
+          console.log('ALL_SKYFORGE_ROUTES_QA_PASS',JSON.stringify({http_ok:result.routes.length,mobile_ok:result.mobile.length,desktop_ok:result.desktop.length,historical_redirects:result.redirects.length,issues:result.failures.length}));
+          NODE
+          cd "$RUNNER_TEMP/skyforge-all-routes"
+          node qa.mjs
+      - name: Upload route QA evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skyforge-all-legacy-routes-20261117
+          path: ${{ runner.temp }}/skyforge-all-routes/results
+          retention-days: 30
+          if-no-files-found: warn
