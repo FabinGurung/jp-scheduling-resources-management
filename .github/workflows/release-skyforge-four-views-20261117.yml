@@ -92,7 +92,7 @@ jobs:
           if(n.activities.length!==160||n.links.length!==210||n.holds.length!==6||
              h.activities.length!==839||h.links.length!==1321)
              throw Error('Project source model changed across UI-only milestone');
-          if(m.qa?.browser_run!==43863288552||!m.qa?.publisher_passed||!m.qa?.kernel_passed)
+          if(m.validation?.live_browser_run!==44002313866||m.validation?.publisher_run!==44002155602||m.validation?.kernel_run!==44001950413)
              throw Error('Version governance has not been closed with successful QA');
           if(n.baseline_approved!==false||h.baseline_approved!==false)
              throw Error('Unapproved planning status incorrectly promoted');
