@@ -56,8 +56,8 @@ test("Narayani and Harisharan have separate public-safe drafts; remaining 20 sch
  }
  assert.equal(c.projects[10].source_authority,"OWNER_REQUESTED_POINTER_ONLY");
  const ui=read("src/presentation/project-catalog.mjs");
- assert.match(ui,/narayani\/desk\.html#activities/);
- assert.match(ui,/narayani\/desk\.html#calendar/);
+ assert.match(ui,/Open the scheduling desk/);
+ assert.doesNotMatch(ui,/anchor\(links,"v002 Block B planning preview/);
  assert.match(ui,/harisharan-residence\/detailed-preview\.html/);
  assert.doesNotMatch(ui,/anchor\(links,"Before \/ Current \/ After/);
  assert.match(ui,/No verified project activity IDs/);
