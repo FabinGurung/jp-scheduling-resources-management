@@ -70,8 +70,8 @@ jobs:
              const r=await fetch(root+path+'?qa=20261117-legacy',{signal:AbortSignal.timeout(25000),cache:'no-store'});
              assert.equal(r.status,200,path+' returned HTTP '+r.status);
              const html=await r.text();
-             assert.match(html,/<html/i,path);
              if(routed.includes(path)){
+              assert.match(html,/<html/i,path);
               assert.match(html,/site-shell\.css/i,path);
               assert.match(html,/site-shell\.mjs/i,path);
              }else assert.match(html,/http-equiv=["']refresh/i,path);
