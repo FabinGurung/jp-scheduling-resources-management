@@ -99,7 +99,7 @@ jobs:
            report.screenshots.push("narayani-package-desktop.png");
            pass("Narayani package","Editable positions 4–15, 12 source activities, East context and shareable link");
            await page.locator('[data-compass-view="drawings"]').click();
-           await page.locator(".desk-drawing-card[data-cad-verified]").first().waitFor({timeout:45000});
+           await page.waitForFunction(()=>document.querySelectorAll(".desk-drawing-card[data-cad-verified]").length===2,{timeout:45000});
            const cards=page.locator(".desk-drawing-card[data-cad-verified]");
            assert.equal(await cards.count(),2);
            const values=await cards.evaluateAll(xs=>xs.map(x=>x.dataset.cadVerified));
@@ -118,7 +118,7 @@ jobs:
            assert.equal(await page.locator(".desk-package-item").count(),21);
            pass("Harisharan package","70–90, 21 source activities and preserved 839-activity model");
            await page.locator('[data-compass-view="drawings"]').click();
-           await page.locator(".desk-drawing-card[data-cad-verified]").first().waitFor({timeout:45000});
+           await page.waitForFunction(()=>document.querySelectorAll(".desk-drawing-card[data-cad-verified]").length===2,{timeout:45000});
            const hcards=page.locator(".desk-drawing-card[data-cad-verified]");
            assert.equal(await hcards.count(),2);
            const hv=await hcards.evaluateAll(xs=>xs.map(x=>x.dataset.cadVerified));
