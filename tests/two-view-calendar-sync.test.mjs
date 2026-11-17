@@ -56,17 +56,18 @@ test("Gregorian calendar gives 28/29 day February and rejects fabricated rollove
  assert.throws(()=>calendarDaySnapshot(fixture(),"2027-02-30"),/ISO/);
  assert.throws(()=>calendarDaySnapshot(fixture(),"not-a-date"),/ISO/);
 });
-test("primary site viewer has exactly two views; old deep link remains compatible only through bottom predecessor tab",()=>{
+test("shared schedule desk supports four focused views with old dependency deep link",()=>{
  const ui=read("src/presentation/scheduling-desk.mjs");
  const project=read("src/presentation/project-catalog.mjs");
- assert.match(ui,/const modes=\["activities","calendar"\]/);
- assert.match(ui,/\["activities","Activities \+ Gantt"\],\["calendar",model\.relative_origin\?"Relative week calendar":"Year calendar"\]/);
+ assert.match(ui,/const modes=\["activities","calendar","packages","drawings"\]/);
+ assert.match(ui,/\["packages","Work packages"\]/);
+  assert.match(ui,/\["drawings","Working drawings"\]/);
  assert.doesNotMatch(ui,/\["dependencies","Before \/ Current \/ After"\]/);
  assert.doesNotMatch(ui,/function renderDependencyPanel/);
  assert.match(ui,/const legacy=requested==="dependencies"/);
  assert.match(ui,/if\(legacy\)state\.detailTab="Predecessors"/);
- assert.match(project,/narayani\/desk\.html#activities/);
- assert.match(project,/narayani\/desk\.html#calendar/);
+ assert.match(project,/Open the scheduling desk/);
+ assert.doesNotMatch(project,/anchor\(links,"v002 Block B planning preview/);
  assert.doesNotMatch(project,/anchor\(links,"Before \/ Current \/ After/);
  assert.match(ui,/const views=\["General","Status","Resources","Predecessors","Successors"/);
 });
