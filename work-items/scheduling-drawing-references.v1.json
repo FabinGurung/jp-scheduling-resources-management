@@ -1,0 +1,102 @@
+{
+  "format": "SKYFORGE_CAD_DRAWING_REFERENCES_V1",
+  "version": "000001",
+  "authority": "CAD_SOURCE_REPOSITORY_PUBLIC_PROJECTION_ONLY",
+  "upstream_repository": "https://github.com/FabinGurung/jp-drawing-coordination",
+  "upstream_pages": "https://fabingurung.github.io/jp-drawing-coordination/",
+  "verified_source_branch": "main",
+  "published_policy": "PROJECT_LEVEL_SOURCE_LINKS__NO_ACTIVITY_WBS_JOIN_WITHOUT_ACCEPTED_CROSSWALK",
+  "project_links": [
+    {
+      "project_id": "PRJ-000007",
+      "cad_project_id": "PRJ-000007",
+      "name": "Narayani Parajuli",
+      "routes": [
+        {
+          "id": "N-CAD-WORKSPACE",
+          "title": "Narayani CAD and working models",
+          "url": "https://fabingurung.github.io/jp-drawing-coordination/projects/narayani-parajuli/aad/",
+          "source_kind": "CAD_PAGE"
+        },
+        {
+          "id": "N-CAD-SOURCE",
+          "title": "Narayani original-source review",
+          "url": "https://fabingurung.github.io/jp-drawing-coordination/projects/narayani-parajuli/aad-source-review/",
+          "source_kind": "CAD_PAGE"
+        }
+      ],
+      "registers": [
+        {
+          "id": "N-CAD-CURRENT",
+          "title": "Narayani current engineering register",
+          "url": "https://fabingurung.github.io/jp-drawing-coordination/data/projects/narayani-parajuli/aad-engineering-current-register.json",
+          "schema": "jp-cad://aad-current-engineering-debt-register/1",
+          "project_field": "projectId",
+          "expected_project": "PRJ-000007",
+          "status_field": "constructionStatus",
+          "revision_field": "currentVersion"
+        },
+        {
+          "id": "N-CAD-STAGES",
+          "title": "Narayani authored drawing stage links",
+          "url": "https://fabingurung.github.io/jp-drawing-coordination/data/projects/narayani-parajuli/aad-source-stage-links-v1.json",
+          "schema": "jp-cad://aad-project-stage-links/1",
+          "project_field": "projectId",
+          "expected_project": "PRJ-000007",
+          "status_field": "reviewMode",
+          "revision_field": null
+        }
+      ],
+      "activity_links": []
+    },
+    {
+      "project_id": "PORT-000014",
+      "cad_project_id": "INTAKE-20260826-HARISHARAN",
+      "name": "Harisharan Adhikari",
+      "routes": [
+        {
+          "id": "H-CAD-WORKSPACE",
+          "title": "Harisharan CAD project",
+          "url": "https://fabingurung.github.io/jp-drawing-coordination/projects/harisharan-adhikari/",
+          "source_kind": "CAD_PAGE"
+        },
+        {
+          "id": "H-CAD-STAGES",
+          "title": "Harisharan working stages",
+          "url": "https://fabingurung.github.io/jp-drawing-coordination/projects/harisharan-adhikari/stages/v03/",
+          "source_kind": "CAD_PAGE"
+        }
+      ],
+      "registers": [
+        {
+          "id": "H-CAD-AXIS",
+          "title": "Harisharan structural source-axis register",
+          "url": "https://fabingurung.github.io/jp-drawing-coordination/data/projects/harisharan-adhikari/source-axis-register.v1.json",
+          "schema": "jp-cad://source-axis-register/1",
+          "project_field": "projectLogicalId",
+          "expected_project": "INTAKE-20260826-HARISHARAN",
+          "status_field": "fileAuthority",
+          "revision_field": "revision"
+        },
+        {
+          "id": "H-CAD-TAKEOFF",
+          "title": "Harisharan provisional plinth takeoff",
+          "url": "https://fabingurung.github.io/jp-drawing-coordination/data/projects/harisharan-adhikari/takeoff.json",
+          "schema": "jp-cad://harisharan-plinth-takeoff/1",
+          "project_field": "logicalId",
+          "expected_project": "INTAKE-20260826-HARISHARAN",
+          "status_field": "status",
+          "revision_field": "revision"
+        }
+      ],
+      "activity_links": []
+    }
+  ],
+  "owner_boundaries": {
+    "drawings": "Original CAD/working drawings, published by CAD GitHub Pages and governed originals in Drive",
+    "scheduling": "Skyforge compiles activity-to-drawing crosswalk after verified source-line evidence",
+    "resources": "Field & Desk owns actual site resource records, not source drawing identities",
+    "estimation": "Cost Estimation owns commercial quantities and forecasts",
+    "no_implied_approval": true
+  }
+}
