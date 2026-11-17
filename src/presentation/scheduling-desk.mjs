@@ -527,7 +527,7 @@ function renderSouth(container,model,state,options={}){
  if(!activity)return;
  const projectLink=path=>options.publicRoot?options.publicRoot+path:new URL("../../"+path,import.meta.url).href;
  const head=put(container,"div","desk-ribbon desk-south");
- put(head,"span","","SOUTH · Primavera-style Activity Details · "+activity.id+" · "+activity.title);
+ put(head,"span","","EAST · Primavera-style Activity Details · "+activity.id+" · "+activity.title);
  const tabs=put(container,"nav","desk-detail-tabs");tabs.setAttribute("role","tablist");
  tabs.setAttribute("aria-label","Selected activity details");
  const views=["General","Status","Resources","Predecessors","Successors","Constraints","Quantities","Steps & Notes"];
@@ -706,12 +706,12 @@ export function renderSchedulingDesk(model,mount,options={}){
  const firstDay=validISO(firstActivity.start_date)?firstActivity.start_date:
     windowInfo?.start||"2026-01-01";
  const state={selected:firstActivity.id,year:Number(firstDay.slice(0,4)),
-  day:firstDay,activeMode:"activities",detailTab:"General"};
+  day:firstDay,activeMode:"activities",detailTab:"General",wbsFilter:"ALL",inspector:{kind:"activity",id:firstActivity.id}};
  const first=panelMap.get("activities");
  const firstRibbon=put(first,"div","desk-ribbon");
  firstRibbon.textContent="WEST · Seven activity fields  |  EAST · Aligned Gantt  |  SOUTH · Resource, predecessor and successor details";
  const south=put(first,"div","desk-south-wrap");
- const details=put(first,"div");
+ const details=put(east,"section","desk-east-details");
  let compass=null;
  function refreshDetails(){
   renderSouth(details,model,state,options);
@@ -728,15 +728,37 @@ export function renderSchedulingDesk(model,mount,options={}){
   onDetails:name=>{
    const btn=Array.from(details.querySelectorAll(".desk-detail-tabs button"))
     .find(b=>b.dataset.detail===name);
-   if(btn){btn.click();details.scrollIntoView({block:"nearest",behavior:"auto"});}
+   if(btn){btn.click();btn.scrollIntoView({block:"nearest",behavior:"auto"});}
   }
  });
+ const onDay=(date,snap)=>{
+  state.day=date;
+  state.inspector={kind:"day",date,
+    items:("items" in snap?snap.items:model.activities.filter(a=>
+      a.start_date&&((a.start<=snap.slot&&snap.slot<a.finish)||a.finish===snap.slot)))};
+  compass.refresh();
+ };
  const calendar=model.relative_origin
-  ?renderRelativeCalendar(panelMap.get("calendar"),model,state,id=>select(id),()=>choose("activities"))
-  :renderYearCalendar(panelMap.get("calendar"),model,state,id=>select(id),()=>choose("activities"));
+  ?renderRelativeCalendar(panelMap.get("calendar"),model,state,id=>select(id),()=>choose("activities"),onDay)
+  :renderYearCalendar(panelMap.get("calendar"),model,state,id=>select(id),()=>choose("activities"),onDay);
+ let packages=null,drawingsLoaded=false;
+ function focusPackage(snapshot){state.inspector={kind:"package",snapshot};compass.refresh();}
+ function focusDrawing(reference){state.inspector={kind:"drawing",reference};compass.refresh();}
+ function showPackageView(){
+  if(packages)return;
+  packages=renderActivityPackages(panelMap.get("packages"),model,{onSelect:select,onFocusPackage:focusPackage});
+ }
+ function showDrawingView(){
+  if(drawingsLoaded)return;
+  drawingsLoaded=true;
+  renderDrawingReferences(panelMap.get("drawings"),model,{onSelect:select,onInspect:focusDrawing})
+   .catch(error=>{const p=put(panelMap.get("drawings"),"p","desk-drawing-held");
+    p.textContent="CAD readback failed safely: "+error.message;});
+ }
  function select(id){
   if(!model.activities.some(a=>a.id===id))throw Error("Unknown selected source activity");
   state.selected=id;
+  state.inspector={kind:"activity",id};
   table.render();
   refreshDetails();
   if(state.activeMode==="calendar")calendar.render();
@@ -755,9 +777,10 @@ export function renderSchedulingDesk(model,mount,options={}){
    table.render(); // source selection remains synchronized between views
    refreshDetails();
    if(previous==="calendar")table.revealSelected();
-  }else{
+  }else if(mode==="calendar"){
    calendar.followSelected({scroll:true});
-  }
+  }else if(mode==="packages")showPackageView();
+  else if(mode==="drawings")showDrawingView();
   compass.setMode(mode);
   if(options.updateHash!==false&&typeof history!=="undefined")
    history.replaceState(null,"","#"+mode);
