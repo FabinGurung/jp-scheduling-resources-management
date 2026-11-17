@@ -130,7 +130,7 @@ if(starter.format!=="SKYFORGE_PRODUCTIVITY_STARTERS_V2"||
  throw Error("Unreviewed source profile, fabricated authority or private starter record");
 
 // Public-safe provisional resource quantities: expressly NOT verified site assignments.
-const resourceDraftText=await readFile(join(root,"work-items/narayani-resource-scenarios.v1.json"),"utf8");
+const resourceDraftText=await readFile(join(root,"work-items/narayani-resource-scenarios.v1.json","work-items/scheduling-drawing-references.v1.json"),"utf8");
 const resourceDraftBlob=createHash("sha1").update("blob "+Buffer.byteLength(resourceDraftText)+"\0").update(resourceDraftText).digest("hex");
 if(resourceDraftBlob!=="e70d1ac324a7d7c139ff125f3d55ed8e3aff3f06")
  throw Error("Narayani public resource draft changed without review");
@@ -419,6 +419,21 @@ for(const fixture of genericManifest.fixtures){
 }
 await writeFile(join(out,"projects/generic/manifest.json"),genericManifestText);
 await cp("machine/index.html");
+// CAD index is only a public source pointer; reject unknown hosts, private Drive URLs,
+ // scheduling activity joins without accepted evidence, and project ID mismatches.
+const cadLinkText=await readFile(join(root,"work-items/scheduling-drawing-references.v1.json"),"utf8");
+const cadLinkIndex=JSON.parse(cadLinkText);
+if(cadLinkIndex.format!=="SKYFORGE_CAD_DRAWING_REFERENCES_V1"||
+ cadLinkIndex.authority!=="CAD_SOURCE_REPOSITORY_PUBLIC_PROJECTION_ONLY"||
+ cadLinkIndex.upstream_pages!=="https://fabingurung.github.io/jp-drawing-coordination/"||
+ cadLinkIndex.project_links?.length!==2||
+ cadLinkIndex.project_links.map(p=>p.project_id).join(",")!=="PRJ-000007,PORT-000014"||
+ cadLinkIndex.project_links.some(p=>p.activity_links?.length!==0||
+  p.routes?.some(r=>!r.url.startsWith(cadLinkIndex.upstream_pages))||
+  p.registers?.some(r=>!r.url.startsWith(cadLinkIndex.upstream_pages)||!r.schema))||
+ /docs\.google\.com|drive\.google\.com|access_token|BEGIN PRIVATE KEY/.test(cadLinkText))
+ throw Error("CAD drawing reference index is not a verified public-only project source manifest");
+
 // One shared futuristic navigation/theme on every PUBLIC, allowlisted page.
 // Machine outputs and old dashboards remain intact, available only through More.
 const skinned=[],redirectOnly=[];
