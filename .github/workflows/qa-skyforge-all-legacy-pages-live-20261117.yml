@@ -125,8 +125,8 @@ jobs:
           assert.equal(result.desktop.length,14);
           console.log('ALL_SKYFORGE_ROUTES_QA_PASS',JSON.stringify({http_ok:result.routes.length,mobile_ok:result.mobile.length,desktop_ok:result.desktop.length,historical_redirects:result.redirects.length,issues:result.failures.length}));
           NODE
-          cd "$RUNNER_TEMP/skyforge-all-routes"
-          node qa.mjs
+          cd "$GITHUB_WORKSPACE"
+          node "$RUNNER_TEMP/skyforge-all-routes/qa.mjs"
       - name: Upload route QA evidence
         if: always()
         uses: actions/upload-artifact@v4
