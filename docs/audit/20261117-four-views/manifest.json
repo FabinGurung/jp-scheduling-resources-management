@@ -1,0 +1,53 @@
+{
+  "format": "A7_GIT_PRE_POST_FOUR_VIEWS_MANIFEST_V1",
+  "subject": "SKYFORGE_FOUR_VIEW_SCHEDULING_DESK",
+  "ordinal": "000001",
+  "recorded": "2026-11-17",
+  "canonical_live_paths": [
+    "src/presentation/scheduling-desk.mjs",
+    "src/presentation/scheduling-compass.mjs",
+    "src/presentation/scheduling-packages.mjs",
+    "src/presentation/scheduling-drawings.mjs",
+    "src/presentation/project-catalog.mjs",
+    "assets/scheduling-desk.css",
+    "scripts/build-public-site.mjs",
+    "work-items/scheduling-drawing-references.v1.json"
+  ],
+  "pre_commit": "b111b20c065db98728bc07c2a5c5f5c5300c3024",
+  "post_feature_commit": "9f6917fb85bd8d6112803313ef71fbd5793da3a4",
+  "source_unchanged": [
+    "projects/narayani/schedule-v002.json",
+    "projects/narayani/project-model.json",
+    "projects/fishtail/harisharan-residence/schedule-v002.json",
+    "projects/registry.json"
+  ],
+  "archives": {
+    "pre": "docs/audit/20261117-four-views/000001_PRE.json",
+    "post": "docs/audit/20261117-four-views/000001_POST.json",
+    "history": "docs/audit/20261117-four-views/version-history.jsonl"
+  },
+  "source_custody": {
+    "drive": "Original working drawings, native Sheets and owner statements",
+    "cad": "Authored drawing/source registers and original drafting models",
+    "skyforge": "Scheduling source projections, WBS, dependencies, source-registry crosswalk",
+    "field": "Actual site workforce and resources",
+    "cost": "Estimated quantities/costs",
+    "pages": "Read-only published artifacts"
+  },
+  "validation": {
+    "kernel_run": 44001950413,
+    "publisher_run": 44002155602,
+    "live_browser_run": 44002313866,
+    "checks_passed": 11,
+    "public_cad_readback": true,
+    "public_narayani_project_id": "PRJ-000007",
+    "public_harisharan_cad_id": "INTAKE-20260826-HARISHARAN",
+    "no_approved_source_claim": true
+  },
+  "policy": "PRE and POST are immutable Git commit/controlled source pointers. No Google Drive source document was modified, so there is no fabricated Google Drive PRE/POST file. Future Drive edits must preserve the same LIVE file ID with real PRE/POST source copies.",
+  "no_original_drive_writes": true,
+  "no_formal_engineering_approval": true,
+  "engineering_holds_remain": true,
+  "status": "VERIFIED_UI_AND_SOURCE_SAFE_PUBLIC_READBACK__DRAWING_ACTIVITY_CROSSWALK_UNADMITTED",
+  "next_task": "CAD must publish stable drawing/element to WBS/activity crosswalk with reviewed evidence; then Skyforge can display individual drawing links in East."
+}
