@@ -190,12 +190,7 @@ function renderProject(mount,registry,p,e){
  }else if(has){
   const work=add(mount,"section","pj-source-meta");
   add(work,"h2","","Scheduling desk · one shared set of source activities");
-  add(work,"p","pj-muted","The Gantt activity register and 12-month calendar are synchronized to ONE schedule. Select an activity in the Gantt; its Predecessors, Successors and Resources are in the lower Activity Details pane. The former constellation and 405 reported-only checklist entries remain in Reference history.");
-  const links=add(work,"nav","pj-toolbar");
-  links.setAttribute("aria-label","Scheduling desk views");
-  anchor(links,"Activity table + Gantt →","narayani/desk.html#activities");
-  anchor(links,"Year / month calendar →","narayani/desk.html#calendar");
-  anchor(links,"v002 Block B planning preview →","narayani/schedule-v002.html#activities");
+  add(work,"p","pj-muted","Open the scheduling desk using the single project entry above. The Schedule version dropdown INSIDE that workspace switches between the existing 45-activity pilot and v002. Four synchronized views cover Activity table + Gantt, Calendar, Work packages, and Working drawings; East displays the selected source activity, date, package, or CAD reference. Earlier constellation and reported-only checklists remain in Reference history.");
   const note=add(work,"div","pj-note");
   note.textContent="The source scenario is NOT an approved baseline, actual progress or permission to start construction.";
  }else{
