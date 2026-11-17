@@ -53,7 +53,7 @@ export function buildSchedulingCompass({model,state,west,east,south,onSelect,onV
  search.setAttribute("aria-label","Search WBS navigation");
  const toc=element(west,"nav","desk-compass-toc");
  toc.setAttribute("aria-label","Scheduling sections");
- for(const [label,mode] of [["Activities & Gantt","activities"],["Calendar","calendar"]]){
+ for(const [label,mode] of [["Gantt","activities"],["Calendar","calendar"],["Packages","packages"],["Drawings","drawings"]]){
   const b=element(toc,"button","",label);
   b.type="button";b.addEventListener("click",()=>onView(mode));
   b.dataset.compassView=mode;
@@ -107,12 +107,58 @@ export function buildSchedulingCompass({model,state,west,east,south,onSelect,onV
  anchor(linkbar,"Material calculator",canonical("work-items/materials.html"));
  anchor(linkbar,"Reusable engine",canonical("studio/"));
  anchor(linkbar,"Version history","https://github.com/FabinGurung/jp-scheduling-resources-management/commits/kernel-v0.2-open-source-engines/");
- anchor(linkbar,"Published milestone","https://github.com/FabinGurung/jp-scheduling-resources-management/releases/tag/v1.16.0-skyforge-standard-schedule-template.1");
+ anchor(linkbar,"Published milestone","https://github.com/FabinGurung/jp-scheduling-resources-management/releases/tag/v1.17.0-skyforge-compass-navigation.1");
  const sourceNote=element(south,"p","desk-compass-provenance",
   "Google Drive/Sheets: governed source originals · GitHub: tested schedules, versioned logic and public-safe JSON · GitHub Actions: verification · GitHub Pages: read-only views. Field & Desk owns actual site resource records; Cost Estimation owns forecast and commercial estimates.");
  function refresh(){
   const a=byActivity.get(state.selected);
   chosen.replaceChildren();sources.replaceChildren();nexts.replaceChildren();trail.replaceChildren();
+  const focus=state.inspector;
+  if(focus?.kind==="day"){
+   element(chosen,"h2","","Calendar date · "+focus.date);
+   element(chosen,"p","desk-compass-note","Selected date in the published scenario, not verified site attendance.");
+   const activities=Array.isArray(focus.items)?focus.items:[];
+   element(chosen,"strong","",activities.length+" scheduled activities or boundary events");
+   const daylist=element(chosen,"nav","desk-compass-relations");
+   for(const item of activities.slice(0,24)){
+    const b=element(daylist,"button","",item.id+" · "+item.title);
+    b.type="button";b.addEventListener("click",()=>onSelect(item.id));
+   }
+   if(activities.length>24)element(chosen,"p","desk-compass-note","Showing the first 24; use the Calendar or Gantt to inspect the rest.");
+   element(sources,"p","desk-compass-alert","No actual completion, inspection signoff or crew attendance can be inferred from this calendar date.");
+   element(trail,"p","desk-compass-note","Choose a date activity to open its full resources, relationships, quantities and source evidence in East.");
+   return;
+  }
+  if(focus?.kind==="package"){
+   const pkg=focus.snapshot;
+   element(chosen,"h2","","Package · activities "+pkg.range.start+"–"+pkg.range.end);
+   element(chosen,"p","desk-compass-note",pkg.counts.included+" activities · "+pkg.wbs.length+
+    " WBS branches · "+pkg.counts.internal_dependencies+" internal links");
+   element(chosen,"p","desk-compass-alert",pkg.counts.held_activities+" activities have open holds; "+pkg.counts.incoming_dependencies+
+    " links enter this package and "+pkg.counts.outgoing_dependencies+" leave it.");
+   const list=element(nexts,"nav","desk-compass-relations");
+   for(const a of pkg.activities.slice(0,30)){
+    const b=element(list,"button","",a.id+" · "+a.title);
+    b.type="button";b.addEventListener("click",()=>onSelect(a.id));
+   }
+   element(sources,"p","desk-compass-note","The package is a selectable, shareable projection. It does not save a new project baseline or authorize work.");
+   element(trail,"p","desk-compass-note","Select an activity inside this package to inspect it in East without leaving Work Packages.");
+   return;
+  }
+  if(focus?.kind==="drawing"){
+   const ref=focus.reference;
+   element(chosen,"h2","",ref.title);
+   element(chosen,"p","desk-compass-note",ref.id+" · CAD source of project "+ref.project_id);
+   element(chosen,"p","desk-compass-alert",ref.source_status||"Published drawing reference: construction approval not established");
+   const url=sourceUrl(ref.url);
+   if(url){
+    const a=anchor(chosen,"Open governed public CAD reference ↗",url);
+    a.target="_blank";a.rel="noopener noreferrer";
+   }
+   element(sources,"p","desk-compass-alert","No activity-to-drawing relationship or IFC/engineering release is implied by this project-level reference.");
+   element(trail,"p","desk-compass-note","CAD owns the drawing. Source-specific WBS and activity links remain unadmitted until explicit evidence is validated.");
+   return;
+  }
   if(!a){element(chosen,"p","","Select an activity to inspect source context.");return;}
   const index=model.activities.findIndex(x=>x.id===a.id);
   element(chosen,"h2","",a.id+" · "+a.title);
