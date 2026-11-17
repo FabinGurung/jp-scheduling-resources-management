@@ -715,6 +715,7 @@ export function renderSchedulingDesk(model,mount,options={}){
  let compass=null;
  function refreshDetails(){
   renderSouth(details,model,state,options);
+  details.hidden=state.inspector?.kind!=="activity";
   compass?.refresh();
  }
  const table=setupActivityTable(south,model,state,refreshDetails);
@@ -736,14 +737,14 @@ export function renderSchedulingDesk(model,mount,options={}){
   state.inspector={kind:"day",date,
     items:("items" in snap?snap.items:model.activities.filter(a=>
       a.start_date&&((a.start<=snap.slot&&snap.slot<a.finish)||a.finish===snap.slot)))};
-  compass.refresh();
+  details.hidden=true;compass.refresh();
  };
  const calendar=model.relative_origin
   ?renderRelativeCalendar(panelMap.get("calendar"),model,state,id=>select(id),()=>choose("activities"),onDay)
   :renderYearCalendar(panelMap.get("calendar"),model,state,id=>select(id),()=>choose("activities"),onDay);
  let packages=null,drawingsLoaded=false;
- function focusPackage(snapshot){state.inspector={kind:"package",snapshot};compass.refresh();}
- function focusDrawing(reference){state.inspector={kind:"drawing",reference};compass.refresh();}
+ function focusPackage(snapshot){state.inspector={kind:"package",snapshot};details.hidden=true;compass.refresh();}
+ function focusDrawing(reference){state.inspector={kind:"drawing",reference};details.hidden=true;compass.refresh();}
  function showPackageView(){
   if(packages)return;
   packages=renderActivityPackages(panelMap.get("packages"),model,{onSelect:select,onFocusPackage:focusPackage});
