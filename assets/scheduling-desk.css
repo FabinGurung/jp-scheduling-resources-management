@@ -278,3 +278,45 @@
  .desk-compass-trail{grid-template-columns:1fr}
  .desk-compass-trail button:last-child{text-align:left}
 }
+
+
+/* V1.18 four workspace views — packages, public CAD readback, persistent east inspector */
+.desk-east-details{border-top:1px solid var(--desk-line);margin-top:14px;padding-top:12px;min-width:0}
+.desk-east-details .desk-ribbon{border-radius:7px;font-size:10px}
+.desk-east-details .desk-detail-tabs{padding:7px 0;gap:4px;display:flex;flex-wrap:wrap;overflow:visible}
+.desk-east-details .desk-detail-tab{font-size:10px;padding:7px 8px;max-width:100%}
+.desk-east-details .desk-detail-body{padding:12px 0}
+.desk-east-details .desk-kv{grid-template-columns:minmax(90px,1fr) minmax(0,1.2fr)}
+.desk-east-details .desk-detail-body,.desk-east-details .desk-detail-body *{overflow-wrap:anywhere}
+.desk-compass-toc{grid-template-columns:repeat(2,minmax(0,1fr))}
+.desk-package-head,.desk-drawing-head{padding:18px 17px 4px}
+.desk-package-head h2,.desk-drawing-head h2{margin:0 0 6px;font-size:19px;letter-spacing:-.02em}
+.desk-package-head p,.desk-drawing-head p{color:var(--desk-muted);font-size:12px}
+.desk-package-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;align-items:end;gap:10px;padding:12px 17px;background:#f4fafa;border-block:1px solid var(--desk-line)}
+.desk-package-form label{display:grid;gap:5px;font-size:11px;color:#426571;font-weight:760}
+.desk-package-form input,.desk-package-form select{border:1px solid #bdd5d7;border-radius:8px;min-width:0;width:100%;min-height:40px;padding:8px;color:var(--desk-ink);background:#fff}
+.desk-package-apply,.desk-package-presets button,.desk-package-focus,.desk-package-share-button{font:inherit;font-size:12px;padding:10px;border:1px solid #b7d6d7;border-radius:8px;background:#e4f6f0;color:#175f65;font-weight:790;cursor:pointer;min-height:40px}
+.desk-package-presets{display:flex;flex-wrap:wrap;gap:8px;padding:12px 17px}
+.desk-package-error{color:#9d3c24;font-size:12px;padding:0 17px}
+.desk-package-summary{background:#f6faf9;border:1px solid var(--desk-line);border-radius:10px;margin:0 17px 12px;padding:13px}
+.desk-package-summary h3{margin:0 0 6px}
+.desk-package-summary p{font-size:12px;color:var(--desk-muted)}
+.desk-package-items{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;padding:0 17px}
+.desk-package-item{font:inherit;background:#fff;border:1px solid var(--desk-line);border-radius:9px;color:var(--desk-ink);text-align:left;padding:12px;cursor:pointer;min-height:65px}
+.desk-package-item:hover{background:#eaf8f5;border-color:#8abbb8}
+.desk-package-item small{display:block;color:#68818a;font-size:10px;margin-top:6px}
+.desk-package-share{padding:14px 17px 20px}
+.desk-drawing-list{padding:8px 17px 21px}
+.desk-drawing-list>h3{font-size:15px;margin:6px 0 12px}
+.desk-drawing-cards,.desk-drawing-register{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:11px;margin:12px 0}
+.desk-drawing-register>h3{grid-column:1/-1;margin:0}
+.desk-drawing-card{background:#fff;border:1px solid var(--desk-line);border-radius:11px;padding:14px;display:grid;align-content:start;gap:9px}
+.desk-drawing-card h3{font-size:13px;line-height:1.4;margin:0}
+.desk-drawing-card a{min-height:32px;display:inline-flex;align-items:center}
+.desk-drawing-card button{width:fit-content;border:1px solid #a8cfcc;border-radius:8px;background:#e6f7f2;color:#145e68;font:inherit;padding:8px;cursor:pointer}
+.desk-drawing-status{font-size:11px;color:#395e69;overflow-wrap:anywhere}
+.desk-drawing-held{padding:14px;background:#fff3e6;border-left:4px solid #bb8d3a;color:#72511c}
+.desk-relative-day-focus{width:100%;text-align:left;background:#e9f6f5;border:1px solid #c5dddd;border-radius:7px;color:#216875;cursor:pointer;min-height:39px;font:inherit;font-weight:780;padding:8px}
+.desk-relative-day-focus:hover{background:#d6f0eb}
+@media(max-width:970px){.desk-package-form{grid-template-columns:repeat(2,minmax(0,1fr))}.desk-east-details .desk-detail-body{padding:13px}}
+@media(max-width:500px){.desk-package-form{grid-template-columns:1fr 1fr}.desk-package-form label:nth-child(3){grid-column:1/-1}.desk-package-apply{grid-column:1/-1}.desk-package-items{grid-template-columns:1fr}.desk-drawing-cards,.desk-drawing-register{grid-template-columns:1fr}.desk-compass-east{max-height:none}}
