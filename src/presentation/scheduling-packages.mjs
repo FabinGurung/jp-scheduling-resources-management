@@ -50,7 +50,7 @@ export function buildActivityPackage(model,{start=1,end=Math.min(15,model.activi
 export function parseActivityPackageQuery(search,count,wbsIds=[]){
  const params=new URLSearchParams(search);
  const raw=params.get("pkg");
- const match=raw?.match(/^(\\d{1,4})-(\\d{1,4})$/);
+ const match=raw?.match(/^([0-9]{1,4})-([0-9]{1,4})$/);
  const defaultEnd=Math.min(15,count);
  let start=1,end=defaultEnd;
  if(match){
