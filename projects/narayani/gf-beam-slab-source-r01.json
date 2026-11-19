@@ -121,5 +121,9 @@
     "Latest engineer-approved drawing issue not established",
     "Original vs working CAD support graph and wall interface need reconciliation"
   ],
-  "readme": "This is a source link registry only, not schedule change. Do not auto-complete activities."
+  "readme": "This is a source link registry only, not schedule change. Do not auto-complete activities.",
+  "work_package_status": "HISTORICAL_R01_SOURCE_REPRODUCTION_SUPERSEDED_BY_R02",
+  "current_R02_index": "https://docs.google.com/document/d/1LLskxHBKuPI5xsP9C7u9FfLHox9wNytB0V0zghPvZXI/edit",
+  "current_R02_vector_atlas": "https://drive.google.com/file/d/1PjekpCtnKJwmsQ8lP0ZmkGDWOQRpViEv/view",
+  "current_R02_work_package_register": "projects/narayani/work-package-memory-wall-r02.json"
 }
