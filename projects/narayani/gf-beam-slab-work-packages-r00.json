@@ -143,5 +143,13 @@
     "Slab thickness/panels/chair and cover detail",
     "Temporary works and engineer pre-pour release"
   ],
-  "note": "This project-specific mapping is read-only: never rewrites generic Skyforge engine, original WBS, source actuals, or private Drive records."
+  "note": "This project-specific mapping is read-only: never rewrites generic Skyforge engine, original WBS, source actuals, or private Drive records.",
+  "supersession": {
+    "status": "SUPERSEDED_BY_SOURCE_EXACT_R01",
+    "date": "2026-11-19",
+    "reason": "R00 beam drawing used 17 unverified CAD candidate strips and misreferenced STR-09 as ground-floor; original ground-floor STR-07 has a different beam network. R00 PDF/SVG drawings remain historical and should not be distributed as current layout.",
+    "replacement_cad_register": "https://github.com/FabinGurung/jp-drawing-coordination/blob/main/public/data/projects/narayani-parajuli/gf-beam-source-exact-r01.json",
+    "replacement_source_plan": "https://drive.google.com/file/d/1AgL_1zLA2V4j5dLXG5WaoPwX9-r0fkhF/view",
+    "requires_engineering_approval": true
+  }
 }
