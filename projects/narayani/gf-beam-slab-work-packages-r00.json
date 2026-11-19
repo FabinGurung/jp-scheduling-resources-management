@@ -1,0 +1,147 @@
+{
+  "schema": "jp-scheduling://narayani-site-working-packages/1",
+  "project_id": "PRJ-000007",
+  "revision": "R00",
+  "date": "2026-11-19",
+  "user_reported_current_stage": "Ground Floor Beam",
+  "user_reported_completed_stage": "Plinth Beam",
+  "completed_stage_evidence": "NOT_VERIFIED_BY_THIS_PACKAGE",
+  "source_wbs": "projects/narayani/schedule-v002.json",
+  "wbs_version_modified": false,
+  "schedule_baseline_modified": false,
+  "calendar_modified": false,
+  "construction_release": false,
+  "source_of_truth": "Google Docs and controlled vector PDFs in Narayani Google Drive",
+  "drive_index": "https://docs.google.com/document/d/1v0w5hZ72CgfPUD4VbYGlwRzKGRmZqDAncHyrCjPbMhE/edit",
+  "drawing_repo_register": "https://github.com/FabinGurung/jp-drawing-coordination/blob/main/public/data/projects/narayani-parajuli/gf-beam-slab-packages-r00.json",
+  "drawing_repo_viewer": "https://github.com/FabinGurung/jp-drawing-coordination/blob/main/public/projects/narayani-parajuli/gf-beam-slab/index.html",
+  "project_folder": "https://drive.google.com/drive/folders/1-QWxpu7CbQ8aGaQIh9CDUMqXlFIVJ2C8",
+  "records": [
+    {
+      "code": "BFW",
+      "name": "Beam formwork",
+      "activity_ids": [
+        "L070-GF",
+        "L090-GF"
+      ],
+      "work_package_doc": "https://docs.google.com/document/d/1iR8HIEpvxaf-0Zd9lIVO-JwQUAYKRks-qZjhnRsA7jA/edit",
+      "drawing_pdf": "https://drive.google.com/file/d/1u-lh_aNW6hD1nm5OYPR5pCRvoVutbWEY/view",
+      "prerequisite_checklist": "See linked authoritative Google Doc",
+      "site_verification": "NOT_RECORDED",
+      "responsible_supervisor": "TO_ASSIGN",
+      "engineering_approval": "NOT_RECORDED",
+      "scope_issue": "July 2026 source drawings; effective construction issue requires verification",
+      "status": "REVIEW_DRAFT_NOT_FOR_CONSTRUCTION"
+    },
+    {
+      "code": "BWD",
+      "name": "Brickwork direction and beam/wall alignment",
+      "activity_ids": [
+        "S020",
+        "L070-GF"
+      ],
+      "work_package_doc": "https://docs.google.com/document/d/1dFcnpYLFfnI4QCTGg_7qEJ-EzE4G9nV_6Sek1MAi65s/edit",
+      "drawing_pdf": "https://drive.google.com/file/d/1dckMlTxI4jZXeRsQfHf9BMTQTqX_gaZg/view",
+      "prerequisite_checklist": "See linked authoritative Google Doc",
+      "site_verification": "NOT_RECORDED",
+      "responsible_supervisor": "TO_ASSIGN",
+      "engineering_approval": "NOT_RECORDED",
+      "scope_issue": "July 2026 source drawings; effective construction issue requires verification",
+      "status": "REVIEW_DRAFT_NOT_FOR_CONSTRUCTION"
+    },
+    {
+      "code": "BLR",
+      "name": "Longitudinal beam reinforcement",
+      "activity_ids": [
+        "L080-GF",
+        "L090-GF"
+      ],
+      "work_package_doc": "https://docs.google.com/document/d/1uXi0AJEDQs2FSpyTusCL7FV-uB9ezr6riRuBLL0I7us/edit",
+      "drawing_pdf": "https://drive.google.com/file/d/1ZULw-eYK_D1Vdla374aCgtH8ewuxqvBa/view",
+      "prerequisite_checklist": "See linked authoritative Google Doc",
+      "site_verification": "NOT_RECORDED",
+      "responsible_supervisor": "TO_ASSIGN",
+      "engineering_approval": "NOT_RECORDED",
+      "scope_issue": "July 2026 source drawings; effective construction issue requires verification",
+      "status": "REVIEW_DRAFT_NOT_FOR_CONSTRUCTION"
+    },
+    {
+      "code": "BST",
+      "name": "Beam stirrups",
+      "activity_ids": [
+        "L080-GF",
+        "L090-GF"
+      ],
+      "work_package_doc": "https://docs.google.com/document/d/1gfkZYaMyg5KydgMwp9kZj6UVqh0lQOelD54_JbIKWs8/edit",
+      "drawing_pdf": "https://drive.google.com/file/d/1bJpKaC3q6ITq5_dMitgNQvC1ohoHDoh6/view",
+      "prerequisite_checklist": "See linked authoritative Google Doc",
+      "site_verification": "NOT_RECORDED",
+      "responsible_supervisor": "TO_ASSIGN",
+      "engineering_approval": "NOT_RECORDED",
+      "scope_issue": "July 2026 source drawings; effective construction issue requires verification",
+      "status": "REVIEW_DRAFT_NOT_FOR_CONSTRUCTION"
+    },
+    {
+      "code": "SLB",
+      "name": "First-floor slab reinforcement",
+      "activity_ids": [
+        "L070-GF",
+        "L080-GF",
+        "L090-GF",
+        "L100-GF"
+      ],
+      "work_package_doc": "https://docs.google.com/document/d/173kgusj9zUvG_ja_IFQX_OXa9fggV0XdxE5heJjxD-4/edit",
+      "drawing_pdf": "https://drive.google.com/file/d/1PVK9f1uyBc8Q-bfoP9QjQZuxLD9ijJvd/view",
+      "prerequisite_checklist": "See linked authoritative Google Doc",
+      "site_verification": "NOT_RECORDED",
+      "responsible_supervisor": "TO_ASSIGN",
+      "engineering_approval": "NOT_RECORDED",
+      "scope_issue": "July 2026 source drawings; effective construction issue requires verification",
+      "status": "REVIEW_DRAFT_NOT_FOR_CONSTRUCTION"
+    },
+    {
+      "code": "CHR",
+      "name": "Slab chairs",
+      "activity_ids": [
+        "L080-GF",
+        "L090-GF"
+      ],
+      "work_package_doc": "https://docs.google.com/document/d/1D4Mp0pzsadmTAjnJ3r6-B_4vwz0MBfsoiFhdvXupbQA/edit",
+      "drawing_pdf": "https://drive.google.com/file/d/1K7SIYZge0y52d05sa2hwQXZu_OfcU5LS/view",
+      "prerequisite_checklist": "See linked authoritative Google Doc",
+      "site_verification": "NOT_RECORDED",
+      "responsible_supervisor": "TO_ASSIGN",
+      "engineering_approval": "NOT_RECORDED",
+      "scope_issue": "July 2026 source drawings; effective construction issue requires verification",
+      "status": "REVIEW_DRAFT_NOT_FOR_CONSTRUCTION"
+    },
+    {
+      "code": "CBK",
+      "name": "Cover blocks and spacers",
+      "activity_ids": [
+        "L080-GF",
+        "L090-GF"
+      ],
+      "work_package_doc": "https://docs.google.com/document/d/1UDmw6WTasXM0J6VyVH5cKBEZIz9U0U2dqe3y24LvQWg/edit",
+      "drawing_pdf": "https://drive.google.com/file/d/11FWYujnAt6fmqD6Iaa6-7fhwRzIML1_J/view",
+      "prerequisite_checklist": "See linked authoritative Google Doc",
+      "site_verification": "NOT_RECORDED",
+      "responsible_supervisor": "TO_ASSIGN",
+      "engineering_approval": "NOT_RECORDED",
+      "scope_issue": "July 2026 source drawings; effective construction issue requires verification",
+      "status": "REVIEW_DRAFT_NOT_FOR_CONSTRUCTION"
+    }
+  ],
+  "dependencies_note": "Existing v002 predecessor/successor graph remains authoritative as a draft. Check L030-GF, L040-GF, L050-GF, L060-GF, L070-GF, L080-GF, L090-GF, L100-GF and F320/S010/S020. Do not infer completed status from a linked drawing.",
+  "holds": [
+    "G03 permit/effective structural issue",
+    "G04 scope/geometry reconciliation",
+    "G05 masonry-column interface where affected",
+    "G06 sleeve/plumbing interface before closure",
+    "G08 foundation detailing where affected",
+    "Member by member beam schedule and BBS",
+    "Slab thickness/panels/chair and cover detail",
+    "Temporary works and engineer pre-pour release"
+  ],
+  "note": "This project-specific mapping is read-only: never rewrites generic Skyforge engine, original WBS, source actuals, or private Drive records."
+}
