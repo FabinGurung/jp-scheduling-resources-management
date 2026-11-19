@@ -1,0 +1,125 @@
+{
+  "schema": "jp-scheduling://narayani-source-grounded-working-packages/1",
+  "project_id": "PRJ-000007",
+  "revision": "R01",
+  "date": "2026-11-19",
+  "status": "SOURCE_EXACT_REFERENCE_PRELIMINARY_NOT_FOR_CONSTRUCTION",
+  "cad_repo": "FabinGurung/jp-drawing-coordination",
+  "cad_record": "https://github.com/FabinGurung/jp-drawing-coordination/blob/main/public/data/projects/narayani-parajuli/gf-beam-source-exact-r01.json",
+  "cad_viewer": "https://github.com/FabinGurung/jp-drawing-coordination/blob/main/public/projects/narayani-parajuli/gf-beam-slab/index.html",
+  "source_drawing": "https://drive.google.com/file/d/1zwmKrfwW9IN5ourLGFdfleJOCi7dcH2_/view",
+  "source_exact_GroundFloorBeamPlan": "https://drive.google.com/file/d/1AgL_1zLA2V4j5dLXG5WaoPwX9-r0fkhF/view",
+  "source_exact_svg": "https://drive.google.com/file/d/1BTnHchCi3u6klUmHy-SXEvxRU7p8bSop/view",
+  "source_exact_beam_details": "https://drive.google.com/file/d/1jrgmkJczgB6aHBJUn0aCJURBQ-xQChtI/view",
+  "source_exact_first_floor_beam_plan": "https://drive.google.com/file/d/1iS2OBPmR6A6y1zigoI0hrCeOJBKidkST/view",
+  "source_exact_slab_bottom": "https://drive.google.com/file/d/1B4qBh584lq4mlcc6Wd-Irti21U3HBYE/view",
+  "source_exact_slab_top": "https://drive.google.com/file/d/123C9wZKXZDEd5TkwAe8QJVLC4eCjDC_-/view",
+  "source_atlas": "https://drive.google.com/file/d/15bWia4vPf8xGfHu3UVgtrcI03tr5cx_g/view",
+  "corrected_source_report": "https://drive.google.com/file/d/1DvimHdw5GsnbADJ6uwzUN25RTgx_HilQ/view",
+  "active_drive_project": "https://drive.google.com/drive/folders/1mosr2gahKr4j7xj6BmrIjz4vdCxBYetF",
+  "drive_working_folder": "https://drive.google.com/drive/folders/1-QWxpu7CbQ8aGaQIh9CDUMqXlFIVJ2C8",
+  "R00_revision": "SUPERSEDED_INCORRECT_BEAM_SCHEMATIC",
+  "owner_reported_plinth_complete": true,
+  "actual_completion_verified": false,
+  "wbs_unchanged": true,
+  "predecessor_successor_unchanged": true,
+  "resource_crew_baseline_unchanged": true,
+  "approval_issued": false,
+  "related_stage": "Ground-floor beam through first-floor deck",
+  "package_references": [
+    {
+      "code": "BFW",
+      "title": "Beam formwork",
+      "activities": [
+        "L070-GF",
+        "L090-GF"
+      ],
+      "drawing_source_pages": [
+        7,
+        8
+      ],
+      "status": "ON_ENGINEERING_HOLD_BEAM_SCHEDULE"
+    },
+    {
+      "code": "BWD",
+      "title": "Beam-wall alignment",
+      "activities": [
+        "S020",
+        "L070-GF"
+      ],
+      "drawing_source_pages": [
+        7
+      ],
+      "status": "ON_ENGINEERING_HOLD_ARCHITECTURAL_OVERLAY"
+    },
+    {
+      "code": "BLR",
+      "title": "Longitudinal rebar",
+      "activities": [
+        "L080-GF",
+        "L090-GF"
+      ],
+      "drawing_source_pages": [
+        8,
+        10
+      ],
+      "status": "ON_ENGINEERING_HOLD_BBS"
+    },
+    {
+      "code": "BST",
+      "title": "Beam stirrups",
+      "activities": [
+        "L080-GF",
+        "L090-GF"
+      ],
+      "drawing_source_pages": [
+        8,
+        17
+      ],
+      "status": "ON_ENGINEERING_HOLD_SPACING_ZONE_COUNTS"
+    },
+    {
+      "code": "SLB",
+      "title": "Slab reinforcement",
+      "activities": [
+        "L080-GF",
+        "L090-GF"
+      ],
+      "drawing_source_pages": [
+        13,
+        14
+      ],
+      "status": "ON_ENGINEERING_HOLD_PANEL_RECONCILIATION"
+    },
+    {
+      "code": "CHR",
+      "title": "Slab chairs",
+      "activities": [
+        "L080-GF",
+        "L090-GF"
+      ],
+      "drawing_source_pages": [
+        15
+      ],
+      "status": "ON_ENGINEERING_HOLD_SLAB_SECTION"
+    },
+    {
+      "code": "CBK",
+      "title": "Cover blocks",
+      "activities": [
+        "L080-GF",
+        "L090-GF"
+      ],
+      "drawing_source_pages": [
+        17
+      ],
+      "status": "ON_ENGINEERING_HOLD_MEMBER_COVER_PLAN"
+    }
+  ],
+  "pending_decisions": [
+    "Source plan labels MB 230x405 but its tabular schedule lists MB 225x405",
+    "Latest engineer-approved drawing issue not established",
+    "Original vs working CAD support graph and wall interface need reconciliation"
+  ],
+  "readme": "This is a source link registry only, not schedule change. Do not auto-complete activities."
+}
