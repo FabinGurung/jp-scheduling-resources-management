@@ -65,7 +65,10 @@ jobs:
             appendFileSync(process.env.GITHUB_ENV,key+"="+d.files[0].id+"\n");
           }
           NODE
-          node scripts/sync-reference-norms.mjs --pull-sheets
+      - name: Import original reference workbooks with established Drive identities
+        env:
+          GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.google.outputs.access_token }}
+        run: node scripts/sync-reference-norms.mjs --pull-sheets
       - name: Fetch all live per-project Docs and Sheets and build privacy-reduced project data
         env:
           GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.google.outputs.access_token }}
