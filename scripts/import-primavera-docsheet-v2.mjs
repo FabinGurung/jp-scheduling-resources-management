@@ -9,11 +9,13 @@ const registryName="PRIMAVERA__ALL_PROJECTS__LIVE_SOURCE_INDEX__V000001";
 const out=resolve("build","primavera-v2");
 const digest=v=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 const isId=x=>typeof x==="string"&&/^[a-zA-Z0-9_-]{20,160}$/.test(x);
-const urlBase="https://www.googleapis.com";
+const endpoint=path=>path.startsWith("/docs/v1/")?"https://docs.googleapis.com"+path.slice(5):
+ path.startsWith("/sheets/v4/")?"https://sheets.googleapis.com"+path.slice(7):
+ "https://www.googleapis.com"+path;
 async function request(path){
  if(!token)throw Error("A read-only Google OAuth token is required");
  let response;for(let n=0;n<3;n++){
-  response=await fetch(urlBase+path,{headers:{Authorization:"Bearer "+token},signal:AbortSignal.timeout(60000)});
+  response=await fetch(endpoint(path),{headers:{Authorization:"Bearer "+token},signal:AbortSignal.timeout(60000)});
   if(response.ok)break;
   if(![429,500,502,503,504].includes(response.status)||n===2)break;
   await new Promise(r=>setTimeout(r,(n+1)*1500));
@@ -40,9 +42,10 @@ async function doc(id){
  inspect(data.body);
  const recurse=t=>{inspect(t.documentTab?.body);for(const child of t.childTabs||[])recurse(child);};
  for(const t of data.tabs||[])recurse(t);
- return list.join("").split(/\n/).map(x=>x.trim()).filter(x=>/^\[PUBLIC\]\s+/.test(x))
-   .map(x=>x.replace(/^\[PUBLIC\]\s+/,"")).filter(x=>x.length>8&&x.length<400)
-   .filter(x=>!/(docs\.google|drive\.google|@|access_token|github\.com\/settings)/i.test(x)).slice(0,20);
+ return [...list.join("").matchAll(/\\[PUBLIC\\]\\s+([^\\[\\n]{8,400})/g)]
+  .map(x=>x[1].trim()).filter(x=>x.length>8&&x.length<400)
+  .filter(x=>!/(docs\\.google|drive\\.google|@|access_token|github\\.com\\/settings)/i.test(x))
+  .filter((x,j,all)=>all.indexOf(x)===j).slice(0,20);
 }
 const forbidden=t=>/(docs\.google\.com|drive\.google\.com|ya29\.|BEGIN PRIVATE KEY|access_token|@)/i.test(t);
 const asText=x=>{const s=safe(x);if(forbidden(s)||s.length>600)throw Error("Nonpublic text entered in a publishable field");return s;};
