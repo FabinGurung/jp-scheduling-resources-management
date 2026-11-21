@@ -15,12 +15,24 @@ await mkdir(join(out,"data","projects"),{recursive:true});
 await cp(join(input,"project-index.json"),join(out,"data/project-index.json"));
 for(const p of index.projects)await cp(join(input,"projects",p.id+".json"),join(out,"data","projects",p.id+".json"));
 await mkdir(join(out,"data","resources"),{recursive:true});
-const resourcePaths=["productivity-norms.v1.json","productivity-starters.v2.json","material-references.v1.json"];
-for(const file of resourcePaths)await cp(join(oldDist,"work-items",file),join(out,"data","resources",file));
-const rates=JSON.parse(await readFile(join(out,"data/resources/productivity-starters.v2.json"),"utf8"));
-const mat=JSON.parse(await readFile(join(out,"data/resources/material-references.v1.json"),"utf8"));
-if(rates.profiles?.length!==46||mat.recipes?.length!==36||
-   mat.recipes.flatMap(x=>x.lines).length!==65)throw Error("The source-backed rates/material reference registers are incomplete");
+const origWork=JSON.parse(await readFile(join(oldDist,"work-items","productivity-norms.v1.json"),"utf8"));
+const rates=JSON.parse(await readFile(join(oldDist,"work-items","productivity-starters.v2.json"),"utf8"));
+const mat=JSON.parse(await readFile(join(oldDist,"work-items","material-references.v1.json"),"utf8"));
+if(origWork.items?.length!==88||rates.profiles?.length!==46||mat.recipes?.length!==36||
+   mat.recipes.flatMap(x=>x.lines).length!==65)throw Error("Incomplete source-backed reference rates/materials");
+const profiles=new Map(rates.profiles.map(x=>[x.id,x]));
+const workItems=origWork.items.map(x=>{
+ const match=profiles.get(rates.items?.find(y=>y.key===x.key)?.reference_profile);
+ return {title:x.title,unit:x.unit,rate:match?{
+  skilled_days_per_unit:match.skilled_days_per_unit,helper_days_per_unit:match.helper_days_per_unit,
+  crew_skilled:2,crew_helpers:3,days_are_8_hours:true,plant_required:!!match.machine_type
+ }:null};
+});
+const publicMaterials=mat.recipes.map(x=>({title:x.title,work_unit:x.work_unit,
+ lines:x.lines.map(v=>({material:v.material_id,quantity_per_unit:v.quantity_per_unit,unit:v.unit}))}));
+await writeFile(join(out,"data/resources/productivity-norms.v1.json"),JSON.stringify({items:workItems},null,2)+"\\n");
+await writeFile(join(out,"data/resources/material-references.v1.json"),JSON.stringify({recipes:publicMaterials},null,2)+"\\n");
+
 // Discover historic public .html routes in the pinned old repository source and retain URLs.
 async function walk(folder,pre=""){let files=[];for(const e of await readdir(folder,{withFileTypes:true})){
  const r=pre?pre+"/"+e.name:e.name,p=join(folder,e.name);
@@ -59,5 +71,5 @@ const manifest={format:"PRIMAVERA_DOCSHEET_PUBLIC_SITE_V2",projects:22,core_page
   project_source:"GOOGLE_DOCS_AND_SHEETS_READ_ONLY",
   work_rate_source:"EXISTING_AUTHORIZED_LIVE_SHEETS",
   no_construction_release:true};
-await writeFile(join(out,"data/site-qa.json"),JSON.stringify(manifest,null,2)+"\n");
+await writeFile(join(input,"site-qa-private.json"),JSON.stringify(manifest,null,2)+"\n");
 console.log("PRIMAVERA_V2_SITE_BUILD_PASS",JSON.stringify(manifest));
