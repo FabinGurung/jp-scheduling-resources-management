@@ -20,7 +20,13 @@ async function request(path){
   if(![429,500,502,503,504].includes(response.status)||n===2)break;
   await new Promise(r=>setTimeout(r,(n+1)*1500));
  }
- if(!response.ok)throw Error("Source read failed, HTTP "+response.status+" (private record not published)");
+ if(!response.ok){
+  const reply=await response.json().catch(()=>({}));
+  const label=path.startsWith("/docs/")?"Docs":path.startsWith("/sheets/")?"Sheets":"Drive";
+  const raw=[reply?.error?.status,reply?.error?.errors?.[0]?.reason,...(reply?.error?.details||[]).map(x=>x.reason)].filter(Boolean);
+  const reason=raw.map(x=>String(x).replace(/[^A-Za-z0-9_-]/g,"").slice(0,60)).join(",")||"UNCLASSIFIED";
+  throw Error("Source read failed HTTP "+response.status+"; service="+label+"; reason="+reason+"; no private locator emitted");
+ }
  return response.json();
 }
 const safe=s=>String(s??"").trim();
