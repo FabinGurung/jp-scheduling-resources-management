@@ -42,9 +42,9 @@ async function doc(id){
  inspect(data.body);
  const recurse=t=>{inspect(t.documentTab?.body);for(const child of t.childTabs||[])recurse(child);};
  for(const t of data.tabs||[])recurse(t);
- return [...list.join("").matchAll(/\\[PUBLIC\\]\\s+([^\\[\\n]{8,400})/g)]
+ return [...list.join("").matchAll(/\[PUBLIC\]\s+([^\[\n]{8,400})/g)]
   .map(x=>x[1].trim()).filter(x=>x.length>8&&x.length<400)
-  .filter(x=>!/(docs\\.google|drive\\.google|@|access_token|github\\.com\\/settings)/i.test(x))
+  .filter(x=>!/(docs\.google|drive\.google|@|access_token|github\.com\/settings)/i.test(x))
   .filter((x,j,all)=>all.indexOf(x)===j).slice(0,20);
 }
 const forbidden=t=>/(docs\.google\.com|drive\.google\.com|ya29\.|BEGIN PRIVATE KEY|access_token|@)/i.test(t);
