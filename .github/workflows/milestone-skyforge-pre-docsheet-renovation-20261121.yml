@@ -1,0 +1,159 @@
+name: Milestone · Skyforge pre-Docs-Sheets backend renovation snapshot
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/milestone-skyforge-pre-docsheet-renovation-20261121.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+
+jobs:
+  freeze-source-and-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SOURCE_SHA: 49f69e76a85eec9737f704691cc69c88aad62818
+      RELEASE_TAG: v1.18.1-skyforge-pre-docsheet-renovation.1
+    steps:
+      - name: Check out exact current scheduling kernel before source migration
+        uses: actions/checkout@v4
+        with:
+          ref: 49f69e76a85eec9737f704691cc69c88aad62818
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Check snapshot lineage and original project contract
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test -s projects/narayani/schedule-v002.json
+          test -s projects/narayani/work-package-memory-wall-r02.json
+          test -s projects/fishtail/harisharan-residence/schedule-v002.html
+          test -s src/presentation/scheduling-packages.mjs
+          test -s src/presentation/scheduling-drawings.mjs
+          test -s work-items/scheduling-drawing-references.v1.json
+          test -s docs/audit/20261117-four-views/manifest.json
+          node --input-type=module <<'NODE'
+          import {readFileSync} from "node:fs";
+          const n=JSON.parse(readFileSync("projects/narayani/schedule-v002.json","utf8"));
+          const r=JSON.parse(readFileSync("projects/narayani/work-package-memory-wall-r02.json","utf8"));
+          if(n.activities.length!==160||n.links.length!==210||n.holds.length!==6||
+             n.baseline_approved!==false||r.project_id!=="PRJ-000007"||
+             r.issue!=="R02"||r.construction_release!==false)
+             throw Error("Snapshot would misrepresent the current controlled Narayani sources");
+          console.log("PRE cutover source is consistent and remains NOT CONSTRUCTION-APPROVED");
+          NODE
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Full core kernel, scheduling and public build regression
+        run: |
+          set -euo pipefail
+          npm test
+          npm run verify:calendar
+          npm run machine:build
+          npm run machine:verify
+          npm run wbs:build
+          npm run wbs:verify
+          npm run pilot:build
+          npm run pilot:verify
+          npm run progress:build
+          npm run progress:verify
+          npm run visual:build
+          npm run visual:verify
+          npm run generic:build
+          npm run generic:verify
+          npm run site:build
+          test -s dist/projects/narayani/schedule-v002.json
+          test -s dist/projects/fishtail/harisharan-residence/schedule-v002.json
+          test -s dist/assets/site-shell.mjs
+      - name: Export byte-checksummed Git repository and reproducible public site snapshot
+        id: freeze
+        env:
+          ARCHIVE_DIR: ${{ runner.temp }}/skyforge-pre-renovation-20261121
+        run: |
+          set -euo pipefail
+          mkdir -p "$ARCHIVE_DIR"
+          git archive --format=zip --prefix="skyforge-kernel-${SOURCE_SHA}/" "$SOURCE_SHA" > "$ARCHIVE_DIR/skyforge-repository-kernel-source.zip"
+          (
+            cd dist
+            zip -q -r "$ARCHIVE_DIR/skyforge-public-site-rebuilt-from-source.zip" .
+          )
+          node --input-type=module <<'NODE'
+          import {writeFileSync} from "node:fs";
+          const dir=process.env.ARCHIVE_DIR;
+          const item={
+            format:"SKYFORGE_PRE_DOC_SHEET_MIGRATION_FREEZE_V1",
+            frozen_at:"2026-11-21",
+            repository:"FabinGurung/jp-scheduling-resources-management",
+            kernel_branch:"kernel-v0.2-open-source-engines",
+            kernel_sha:process.env.SOURCE_SHA,
+            main_publisher_sha_observed:"392a14e5a13bd4e615dd52044f8ceb615f3ed043",
+            tag:process.env.RELEASE_TAG,
+            last_successful_authenticated_publisher_run:44668877084,
+            owner_source_status:"GOOGLE_DRIVE_SHEETS_UNCHANGED_AND_REMOTELY_GOVERNED",
+            migration_status:"NOT_STARTED",
+            archive_contents:{
+              source:"skyforge-repository-kernel-source.zip",
+              locally_rebuilt_site:"skyforge-public-site-rebuilt-from-source.zip",
+              actual_pages_artifact:"ARCHIVE_SEPARATELY_FROM_EXISTING_SUCCESSFUL_PUBLISHER_RUN_44668877084"
+            },
+            exclusions:"No restricted Google Docs/Sheets contents or credentials are included. Rebuilt site differs from authenticated live Sheets import; archive the actual pages artifact separately.",
+            counts:{narayani_v002_activities:160,narayani_v002_links:210,narayani_holds:6,harisharan_v002_activities:839,harisharan_links:1321},
+            approval_implied:false
+          };
+          writeFileSync(dir+"/snapshot-manifest.json",JSON.stringify(item,null,2)+"\n");
+          NODE
+          (
+            cd "$ARCHIVE_DIR"
+            sha256sum skyforge-repository-kernel-source.zip skyforge-public-site-rebuilt-from-source.zip snapshot-manifest.json > checksums.sha256
+          )
+          echo "ARCHIVE_DIR=$ARCHIVE_DIR" >> "$GITHUB_ENV"
+          unzip -tq "$ARCHIVE_DIR/skyforge-repository-kernel-source.zip"
+          unzip -tq "$ARCHIVE_DIR/skyforge-public-site-rebuilt-from-source.zip"
+      - name: Publish immutable snapshot files to GitHub Actions artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: skyforge-kernel-and-site-pre-docsheet-renovation-v1-18-1
+          path: ${{ env.ARCHIVE_DIR }}/*
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 0
+      - name: Tag exact verified kernel SHA and publish recovery milestone
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            git fetch --no-tags origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+            test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$SOURCE_SHA"
+          else
+            git tag -a "$RELEASE_TAG" "$SOURCE_SHA" -m 'Frozen Skyforge pre-Google-Doc-Sheet backend migration; engine, source-safe project scenarios and R02 packages retained'
+            git push origin "refs/tags/$RELEASE_TAG"
+          fi
+          cat > "$ARCHIVE_DIR/release-notes.md" <<'NOTES'
+          # Skyforge v1.18.1 · Pre-Docs/Sheets backend separation recovery checkpoint
+
+          Frozen, source-exact baseline before adopting Google Doc narratives and Google Sheet rows as authoritative per-project scheduling sources. The public Pages engine, four top-level tabs/five functional views, present Narayani 45-activity pilot and 160-activity v002, Harisharan schedules, materials planner, CAD public-source integration, and Narayani R02 linked package records remain unchanged.
+
+          **This is a rollback release, not a migration or engineering approval.** The new source import, AI interpretation, Google Doc/Sheet adapters and per-project publishing gates are not activated by this tag.
+
+          The GitHub release assets contain: (1) byte-for-byte tracked Git repository source archive at immutable SHA, (2) clean reproducible public-site build from that SHA, (3) SHA256 checksums and a manifest. The actual Sheets-backed live GitHub Pages artifact is captured separately from the successful authorized publisher run to avoid confusing a clean rebuild with the deployed data snapshot. Original Google Docs/Sheets live IDs and restricted source files are never added to GitHub release assets.
+
+          Rollback: validate tag -> checkout exact source commit in a restoration branch -> run kernel/CPM/calendar/public build -> import existing authenticated live Google reference Sheets read-only -> deploy existing main-branch publisher -> verify the project editions and engineering holds. Never overwrite the original Google Docs/Sheets.
+          NOTES
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Existing verified release found; checking tag unchanged"
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --target "$SOURCE_SHA" \
+              --title 'Skyforge v1.18.1 · Pre-Docs/Sheets Renovation Recovery Checkpoint' \
+              --notes-file "$ARCHIVE_DIR/release-notes.md"
+          fi
+          gh release upload "$RELEASE_TAG" \
+            "$ARCHIVE_DIR/skyforge-repository-kernel-source.zip" \
+            "$ARCHIVE_DIR/skyforge-public-site-rebuilt-from-source.zip" \
+            "$ARCHIVE_DIR/snapshot-manifest.json" \
+            "$ARCHIVE_DIR/checksums.sha256" --clobber
+          gh release view "$RELEASE_TAG" --json tagName,targetCommitish,url,assets
