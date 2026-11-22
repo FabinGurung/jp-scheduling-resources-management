@@ -18,7 +18,7 @@ on:
     types: [completed]
     branches: [kernel-v0.2-open-source-engines]
 
-# A public/main OIDC identity reads only two explicitly shared reference registers.
+# The main-branch OIDC reader imports only the registered, explicitly shared sources.
 # No spreadsheet IDs, credentials, tokens, or private source rows are committed.
 # Site code remains on the established canonical kernel branch.
 permissions:
@@ -71,7 +71,7 @@ jobs:
           token_format: access_token
           access_token_scopes: |
             https://www.googleapis.com/auth/spreadsheets.readonly
-            https://www.googleapis.com/auth/drive.metadata.readonly
+            https://www.googleapis.com/auth/drive.readonly
           create_credentials_file: false
       - name: Discover exactly the two authorized reference workbooks privately
         env:
@@ -134,9 +134,34 @@ jobs:
           }
           console.log('Validated source status, 88/46/36/65 record counts, hashes, and public-data boundaries');
           NODE
+      - name: Read the registered project Sheets and native Doc exports
+        env:
+          GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.skyforge-auth.outputs.access_token }}
+        run: node scripts/import-primavera-docsheet-v2.mjs
+      - name: Validate and include the shared project schedule workspace
+        run: |
+          node scripts/build-site-docsheet-v2.mjs
+          node scripts/verify-primavera-docsheet-v2.mjs
+          test ! -e dist/schedules
+          mv dist-v2 dist/schedules
+          node --input-type=module <<'NODE'
+          import {readFile,writeFile} from 'node:fs/promises';
+          const links=[
+            ['dist/index.html','<section class="hero">','./schedules/projects/'],
+            ['dist/projects/index.html','<main','../schedules/projects/']
+          ];
+          for(const [path,marker,href] of links){
+            const page=await readFile(path,'utf8');
+            const start=page.indexOf(marker);
+            if(start<0)throw Error('Missing schedule entry point in '+path);
+            const end=page.indexOf('>',start)+1;
+            const link='<p><a href="'+href+'">Open live project schedules</a></p>';
+            await writeFile(path,page.slice(0,end)+link+page.slice(end));
+          }
+          NODE
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
-      - name: Publish validated Sheets-backed Skyforge
+      - name: Publish validated Docs- and Sheets-backed Skyforge
         uses: actions/deploy-pages@v4

@@ -1,5 +1,10 @@
-# jp-ecosystem-project-map
-Coordinate-verified interactive project mapping system and AI-ready data package for the JP Ecosystem.
+# Primavera / Skyforge
+
+[Open the live project schedule directory](https://fabingurung.github.io/jp-scheduling-resources-management/schedules/projects/).
+
+Each registered project has an editable scheduling Sheet and a companion Google Doc. Use the Sheet for activities, durations, dates and dependencies. Use the Doc for scope, decisions and notes. Begin a reviewed paragraph with `[PUBLIC] ` to include it in the public project notes. Keep confidential details in the private source.
+
+[The publishing workflow](https://github.com/FabinGurung/jp-scheduling-resources-management/actions/workflows/skyforge-reference-sync.yml) reads the registered inputs and tests the public projection before updating Pages. It can run manually and is scheduled hourly. The source files are filed under the repository's folder in `01_JP / 09 GitHub Repositories`.
 
 ## Federated repository boundary — A7 is an index, not this product's template owner
 
