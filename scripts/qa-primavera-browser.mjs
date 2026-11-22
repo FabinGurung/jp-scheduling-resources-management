@@ -53,7 +53,9 @@ try {
     await page.getByText('No activity schedule is available for this selection.').waitFor();
     await page.goto(root + 'resources/index.html');
     await page.getByRole('link', {name: 'Open materials planner'}).waitFor();
-    await page.getByRole('columnheader', {name: 'Per work unit'}).waitFor();
+    const headings = await page.locator('#resourceList th').allTextContents();
+    assert.deepEqual(headings, ['Reference work', 'Category', 'Unit', 'Per work unit'],
+      'Resource table headers at ' + width + 'px');
     assert.ok(await page.locator('#resourceList tbody tr').count() > 0);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2));
     assert.deepEqual(errors, []);

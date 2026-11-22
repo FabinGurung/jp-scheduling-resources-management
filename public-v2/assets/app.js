@@ -173,7 +173,8 @@ async function resources(){
   const draw=()=>{const q=search.value.trim().toLowerCase();list.replaceChildren();
    const subset=entries.filter(x=>x.name.toLowerCase().includes(q)).slice(0,75);
    if(!subset.length)return empty(list,"No matching reference entries.");
-   const table=make(list,"table"),head=make(make(table,"thead"),"tr");for(const x of ["Reference work","Category","Unit","Per work unit"])make(head,"th","",x);
+   const table=make(list,"table"),head=make(make(table,"thead"),"tr");
+   for(const title of ["Reference work","Category","Unit","Per work unit"])make(head,"th","",title).scope="col";
    const body=make(table,"tbody");for(const x of subset){const tr=make(body,"tr");for(const v of [x.name,x.kind,x.unit,x.details])make(tr,"td","",v||"—");}
    make(list,"p","small muted","Reference only. No project quantity or approval is assumed.");};
   search.oninput=draw;draw();
