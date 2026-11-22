@@ -9,10 +9,9 @@ const registryName="PRIMAVERA__ALL_PROJECTS__LIVE_SOURCE_INDEX__V000001";
 const out=resolve("build","primavera-v2");
 const digest=v=>createHash("sha256").update(JSON.stringify(v)).digest("hex");
 const isId=x=>typeof x==="string"&&/^[a-zA-Z0-9_-]{20,160}$/.test(x);
-const endpoint=path=>path.startsWith("/docs/v1/")?"https://docs.googleapis.com"+path.slice(5):
- path.startsWith("/sheets/v4/")?"https://sheets.googleapis.com"+path.slice(7):
+const endpoint=path=>path.startsWith("/sheets/v4/")?"https://sheets.googleapis.com"+path.slice(7):
  "https://www.googleapis.com"+path;
-async function request(path){
+async function request(path,{text=false}={}){
  if(!token)throw Error("A read-only Google OAuth token is required");
  let response;for(let n=0;n<3;n++){
   response=await fetch(endpoint(path),{headers:{Authorization:"Bearer "+token},signal:AbortSignal.timeout(60000)});
@@ -22,12 +21,12 @@ async function request(path){
  }
  if(!response.ok){
   const reply=await response.json().catch(()=>({}));
-  const label=path.startsWith("/docs/")?"Docs":path.startsWith("/sheets/")?"Sheets":"Drive";
+  const label=text?"Google Doc export":path.startsWith("/sheets/")?"Sheets":"Drive";
   const raw=[reply?.error?.status,reply?.error?.errors?.[0]?.reason,...(reply?.error?.details||[]).map(x=>x.reason)].filter(Boolean);
   const reason=raw.map(x=>String(x).replace(/[^A-Za-z0-9_-]/g,"").slice(0,60)).join(",")||"UNCLASSIFIED";
   throw Error("Source read failed HTTP "+response.status+"; service="+label+"; reason="+reason+"; no private locator emitted");
  }
- return response.json();
+ return text?response.text():response.json();
 }
 const safe=s=>String(s??"").trim();
 const rows=(v)=>{const headers=(v?.[0]||[]).map(safe);return(v||[]).slice(1).filter(r=>r.some(x=>safe(x)!=="")).map(r=>Object.fromEntries(headers.map((h,i)=>[h,safe(r[i])])));};
@@ -36,22 +35,26 @@ async function sheet(id,range){
  const path="/sheets/v4/spreadsheets/"+encodeURIComponent(id)+"/values/"+encodeURIComponent(range)+"?valueRenderOption=UNFORMATTED_VALUE";
  const data=await request(path);return data.values||[];
 }
+async function schedule(id){
+ if(!isId(id))throw Error("Invalid registered Sheet identity");
+ // Open-ended row ranges allow projects to grow without silently clipping rows.
+ const ranges=["PROJECT!A:C","WBS!A:E","ACTIVITIES!A:M","RELATIONSHIPS!A:J","PACKAGES!A:F","DRAWINGS!A:G","HOLDS!A:F"];
+ const query=new URLSearchParams({valueRenderOption:"UNFORMATTED_VALUE",dateTimeRenderOption:"FORMATTED_STRING"});
+ for(const range of ranges)query.append("ranges",range);
+ const data=await request("/sheets/v4/spreadsheets/"+id+"/values:batchGet?"+query);
+ if(data.valueRanges?.length!==ranges.length)throw Error("Incomplete registered schedule tabs");
+ return data.valueRanges.map(range=>range.values||[]);
+}
 async function doc(id){
  if(!isId(id))throw Error("Invalid registered Doc identity");
- // A document may be a native single-tab or multi-tab Doc. Read its tab content, but publish
- // only explicit [PUBLIC] paragraphs and never link its private file ID to Pages.
- const data=await request("/docs/v1/documents/"+encodeURIComponent(id)+"?includeTabsContent=true");
- const list=[];
- const inspect=body=>{for(const block of body?.content||[]){for(const el of block.paragraph?.elements||[]){
-  const str=el.textRun?.content;if(str)list.push(str);
- }}};
- inspect(data.body);
- const recurse=t=>{inspect(t.documentTab?.body);for(const child of t.childTabs||[])recurse(child);};
- for(const t of data.tabs||[])recurse(t);
- return [...list.join("").matchAll(/\[PUBLIC\]\s+([^\[\n]{8,400})/g)]
-  .map(x=>x[1].trim()).filter(x=>x.length>8&&x.length<400)
-  .filter(x=>!/(docs\.google|drive\.google|@|access_token|github\.com\/settings)/i.test(x))
-  .filter((x,j,all)=>all.indexOf(x)===j).slice(0,20);
+ // Export the already shared native Doc through the enabled Drive API. Only
+ // complete paragraphs explicitly approved for public display can leave this job.
+ const body=await request("/drive/v3/files/"+id+"/export?mimeType=text%2Fplain",{text:true});
+ const publicLines=body.replace(/^\uFEFF/,"").split(/\r?\n/).map(safe)
+  .filter(line=>line.startsWith("[PUBLIC] ")).map(line=>safe(line.slice(9)));
+ if(publicLines.some(line=>!line||line.length>400||forbidden(line)||/https?:\/\//i.test(line)))
+  throw Error("A public narrative paragraph failed the publication checks");
+ return [...new Set(publicLines)];
 }
 const forbidden=t=>/(docs\.google\.com|drive\.google\.com|ya29\.|BEGIN PRIVATE KEY|access_token|@)/i.test(t);
 const asText=x=>{const s=safe(x);if(forbidden(s)||s.length>600)throw Error("Nonpublic text entered in a publishable field");return s;};
@@ -66,12 +69,7 @@ async function loadOne(row){
  if(!/^PORT-\d{6}$/.test(project_id))throw Error("Invalid project UID");
  const sh=row.schedule_sheet_id,dc=row.narrative_doc_id;
  if(!isId(sh)||!isId(dc))throw Error("Missing source identities for "+project_id);
- const [project,wbs,acts,rels,packs,drawings,holds,words]=await Promise.all([
-  sheet(sh,"PROJECT!A1:C15"),sheet(sh,"WBS!A1:E2000"),
-  sheet(sh,"ACTIVITIES!A1:M2000"),sheet(sh,"RELATIONSHIPS!A1:J2200"),
-  sheet(sh,"PACKAGES!A1:F2000"),sheet(sh,"DRAWINGS!A1:G2000"),
-  sheet(sh,"HOLDS!A1:F2200"),doc(dc)
- ]);
+ const [[project,wbs,acts,rels,packs,drawings,holds],words]=await Promise.all([schedule(sh),doc(dc)]);
  const facts=Object.fromEntries(project.slice(1).map(x=>[safe(x[0]),safe(x[1])]));
  if(facts["Project ID"]!==project_id||facts["Project name"]!==row.project_title)
   throw Error("Project identity or title crosswalk mismatch for "+project_id);
