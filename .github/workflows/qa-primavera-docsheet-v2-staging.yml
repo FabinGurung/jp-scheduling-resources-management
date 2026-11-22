@@ -34,7 +34,7 @@ jobs:
           npm run visual:build
           npm run generic:build
           npm run site:build
-      - name: Authenticate restricted Google reader with Doc and Sheet read-only scopes
+      - name: Authenticate restricted Google reader with Drive and Sheet read-only scopes
         id: google
         uses: google-github-actions/auth@v3
         with:
@@ -43,8 +43,7 @@ jobs:
           token_format: access_token
           access_token_scopes: |
             https://www.googleapis.com/auth/spreadsheets.readonly
-            https://www.googleapis.com/auth/documents.readonly
-            https://www.googleapis.com/auth/drive.metadata.readonly
+            https://www.googleapis.com/auth/drive.readonly
           create_credentials_file: false
       - name: Re-import the two original authorized reference Sheets
         env:
