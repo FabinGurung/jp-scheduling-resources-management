@@ -75,7 +75,12 @@ jobs:
       - name: Build one shared home, projects, resources and project viewer and validate
         run: |
           node scripts/build-site-docsheet-v2.mjs
-          node scripts/verify-primavera-docsheet-v2.mjs
+          node scripts/verify-primavera-docsheet-v2.mjs --check-migration-baseline
+      - name: Browser-test the staged schedule workspace at desktop and mobile widths
+        run: |
+          npm install --prefix "$RUNNER_TEMP/primavera-browser" --no-save --no-audit --no-fund playwright@1.56.1
+          "$RUNNER_TEMP/primavera-browser/node_modules/.bin/playwright" install chromium
+          NODE_PATH="$RUNNER_TEMP/primavera-browser/node_modules" node scripts/qa-primavera-browser.mjs
       - name: Preserve the verified preview artifact for inspection
         uses: actions/upload-artifact@v4
         with:
