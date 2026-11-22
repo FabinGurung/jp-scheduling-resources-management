@@ -34,6 +34,12 @@ async function workspace(){
  $("heading").textContent=model.title;$("companyLabel").textContent=model.company;
  $("companyLabel").style.background=companyColor[model.company_key]||"#e4f3f2";$("companyLabel").style.color="#fff";
  $("stage").textContent=model.group+" · "+draft(model);
+ if(model.public_narrative?.length){
+  const notes=el("section","card section");
+  make(notes,"h2","","Project notes");
+  for(const paragraph of model.public_narrative)make(notes,"p","",paragraph);
+  $("stage").after(notes);
+ }
  document.title=model.title+" — Skyforge";
  const controls={tab:"activities",wbs:"",search:"",offset:0,packageStart:1,packageEnd:Math.min(15,model.activities.length),week:0,month:0};
  const initial=(location.hash||"").replace("#","");
@@ -153,19 +159,22 @@ async function resources(){
  try{
   const [work,materials]=await Promise.all([json("data/resources/productivity-norms.v1.json"),json("data/resources/material-references.v1.json")]);
   holder.replaceChildren();
-  for(const [title,desc,count] of [
-   ["Work output rates","Reference work types and workday allowances. Confirm actual site crew and soil/structural conditions.",work.items?.length||0],
-   ["Material consumption norms","Reference construction material assemblies and approximate quantities. Design specifications remain authoritative.",materials.recipes?.length||0],
-   ["Site work packages","Source-backed activity bundles, working notes and project preparation. Choose a project for its actual packages.",null],
-   ["Construction guidance","Current standard reference notes and constraints, subject to project engineering review.",null]]){
-    const card=make(holder,"section","card");make(card,"h2","",title);make(card,"p","",desc);if(count!==null)pill(card,count+" reference entries");if(title==="Site work packages")href(card,"Find project packages","../projects/index.html");}
-  const entries=[...(work.items||[]).map(x=>({name:x.title,kind:"Work output",unit:x.unit})),
-   ...(materials.recipes||[]).map(x=>({name:x.title,kind:"Material norm",unit:x.work_unit}))];
+  for(const [title,desc,count,label,link] of [
+   ["Work output rates","Labour days per unit of work.",work.items.length,"Open work rates calculator","../../work-items/productivity.html"],
+   ["Material consumption norms","Material quantities per unit of work.",materials.recipes.length,"Open materials planner","../../work-items/materials.html"],
+   ["Site work packages","Activity bundles and project planning notes.",null,"Find project packages","../projects/index.html"],
+   ["Construction guidance","Reference notes and review requirements.",null,"Open construction guidance","../../knowledge/index.html"]]){
+    const card=make(holder,"section","card");make(card,"h2","",title);make(card,"p","",desc);
+    href(card,label,link);if(count!==null)pill(card,count+" reference entries");}
+  const entries=[...work.items.map(x=>({name:x.title,kind:"Work output",unit:x.unit,
+    details:x.rate?`${x.rate.skilled_days_per_unit} skilled days, ${x.rate.helper_days_per_unit} helper days`:"Rate pending"})),
+   ...materials.recipes.map(x=>({name:x.title,kind:"Material norm",unit:x.work_unit,
+    details:x.lines.map(line=>`${line.material} ${line.quantity_per_unit??"pending"} ${line.unit}`).join(" · ")}))];
   const draw=()=>{const q=search.value.trim().toLowerCase();list.replaceChildren();
    const subset=entries.filter(x=>x.name.toLowerCase().includes(q)).slice(0,75);
    if(!subset.length)return empty(list,"No matching reference entries.");
-   const table=make(list,"table"),head=make(make(table,"thead"),"tr");for(const x of ["Reference work","Category","Unit"])make(head,"th","",x);
-   const body=make(table,"tbody");for(const x of subset){const tr=make(body,"tr");for(const v of [x.name,x.kind,x.unit])make(tr,"td","",v||"—");}
+   const table=make(list,"table"),head=make(make(table,"thead"),"tr");for(const x of ["Reference work","Category","Unit","Per work unit"])make(head,"th","",x);
+   const body=make(table,"tbody");for(const x of subset){const tr=make(body,"tr");for(const v of [x.name,x.kind,x.unit,x.details])make(tr,"td","",v||"—");}
    make(list,"p","small muted","Reference only. No project quantity or approval is assumed.");};
   search.oninput=draw;draw();
  }catch{holder.replaceChildren();empty(holder,"The resource references could not be refreshed. The project library remains accessible.");}

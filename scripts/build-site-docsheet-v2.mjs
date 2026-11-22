@@ -1,7 +1,7 @@
 // Skyforge v2 public artifact: one template, 22 independently governed Docs/Sheets projects.
-// Old static pages are RETIRED from the live site and replaced only with compatibility redirects.
-import {mkdir,readFile,writeFile,copyFile,readdir,rm,stat} from "node:fs/promises";
-import {resolve,join,dirname,relative} from "node:path";
+// This workspace is mounted under /schedules/ alongside the existing tools and editions.
+import {mkdir,readFile,writeFile,copyFile,rm} from "node:fs/promises";
+import {resolve,join,dirname} from "node:path";
 const base=resolve("."),src=join(base,"public-v2"),input=join(base,"build/primavera-v2"),
  out=join(base,"dist-v2"),oldDist=join(base,"dist");
 await rm(out,{recursive:true,force:true});
@@ -25,48 +25,16 @@ const workItems=origWork.items.map(x=>{
  const match=profiles.get(rates.items?.find(y=>y.key===x.key)?.reference_profile);
  return {title:x.title,unit:x.unit,rate:match?{
   skilled_days_per_unit:match.skilled_days_per_unit,helper_days_per_unit:match.helper_days_per_unit,
-  crew_skilled:2,crew_helpers:3,days_are_8_hours:true,plant_required:!!match.machine_type
+  crew_skilled:rates.crew_policy.skilled_people,crew_helpers:rates.crew_policy.unskilled_helpers,
+  hours_per_day:rates.crew_policy.labour_hours_per_day,plant_required:!!match.machine_type
  }:null};
 });
+const materialNames=new Map(mat.materials.map(row=>[row.id,row.name]));
 const publicMaterials=mat.recipes.map(x=>({title:x.title,work_unit:x.work_unit,
- lines:x.lines.map(v=>({material:v.material_id,quantity_per_unit:v.quantity_per_unit,unit:v.unit}))}));
-await writeFile(join(out,"data/resources/productivity-norms.v1.json"),JSON.stringify({items:workItems},null,2)+"\\n");
-await writeFile(join(out,"data/resources/material-references.v1.json"),JSON.stringify({recipes:publicMaterials},null,2)+"\\n");
-
-// Discover historic public .html routes in the pinned old repository source and retain URLs.
-async function walk(folder,pre=""){let files=[];for(const e of await readdir(folder,{withFileTypes:true})){
- const r=pre?pre+"/"+e.name:e.name,p=join(folder,e.name);
- if(e.isDirectory()){if(![".git","node_modules","dist","dist-v2","build"].includes(e.name))files.push(...await walk(p,r));}
- else if(e.isFile()&&r.endsWith(".html"))files.push(r);
- }return files;}
-const oldRoutes=await walk(base);
-const current=new Set(["index.html","projects/index.html","projects/view.html","resources/index.html"]);
-const legacy=JSON.parse(await readFile(join(base,"projects/registry.json"),"utf8"));
-const uriProject=id=>"projects/view.html?project="+encodeURIComponent(id);
-const pick=route=>{
- const name=route.toLowerCase();
- if(name.startsWith("work-items/")||name.startsWith("knowledge/"))return "resources/index.html";
- if(name.startsWith("projects/narayani/")||name.startsWith("projects/narayani-record/"))return uriProject("PORT-000001");
- for(const p of legacy.projects){
-  if(name.startsWith("projects/"+p.company+"/"+p.slug.toLowerCase()+"/"))return uriProject(p.id);
-  if(p.legacy_portfolio_slug&&name.startsWith("projects/portfolio/"+p.legacy_portfolio_slug.toLowerCase()+"/"))return uriProject(p.id);
- }
- if(name.startsWith("projects/"))return "projects/index.html";
- return "index.html";
-};
-const prefix="https://fabingurung.github.io/jp-scheduling-resources-management/";
-let redirects=0;
-for(const path of oldRoutes){
- if(current.has(path))continue;
- const target=prefix+pick(path),dest=join(out,path);
- await mkdir(dirname(dest),{recursive:true});
- const safe=target.replaceAll("&","&amp;").replaceAll('"',"&quot;");
- const page='<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url='+safe+'"><meta name="robots" content="noindex"><title>Page moved · Skyforge</title></head><body><p>This page has moved to the shared project workspace. <a href="'+safe+'">Open the current page</a>.</p></body></html>';
- await writeFile(dest,page);redirects++;
-}
-await writeFile(join(out,"404.html"),'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Skyforge — Page not found</title><meta http-equiv="refresh" content="0;url='+prefix+'projects/index.html"></head><body><p>Find the current <a href="'+prefix+'projects/index.html">project directory</a>.</p></body></html>');
+ lines:x.lines.map(v=>({material:materialNames.get(v.material_id),quantity_per_unit:v.quantity_per_unit,unit:v.unit}))}));
+await writeFile(join(out,"data/resources/productivity-norms.v1.json"),JSON.stringify({items:workItems},null,2)+"\n");
+await writeFile(join(out,"data/resources/material-references.v1.json"),JSON.stringify({recipes:publicMaterials},null,2)+"\n");
 const manifest={format:"PRIMAVERA_DOCSHEET_PUBLIC_SITE_V2",projects:22,core_pages:4,
-  historical_redirects:redirects,legacy_source_removed_from_public_dist:true,
   only_template_files:["index.html","projects/index.html","projects/view.html","resources/index.html"],
   project_source:"GOOGLE_DOCS_AND_SHEETS_READ_ONLY",
   work_rate_source:"EXISTING_AUTHORIZED_LIVE_SHEETS",

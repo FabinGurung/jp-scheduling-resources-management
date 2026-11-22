@@ -58,6 +58,14 @@ async function doc(id){
 }
 const forbidden=t=>/(docs\.google\.com|drive\.google\.com|ya29\.|BEGIN PRIVATE KEY|access_token|@)/i.test(t);
 const asText=x=>{const s=safe(x);if(forbidden(s)||s.length>600)throw Error("Nonpublic text entered in a publishable field");return s;};
+function sourceDate(value){
+ const text=asText(value);
+ if(!text||/^R\+\d+$/.test(text))return text;
+ if(/^\d{4}-\d{2}-\d{2}$/.test(text))return text;
+ const parts=text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+ if(!parts)throw Error("Use a calendar date or R+day in a publishable schedule row");
+ return [parts[3],parts[1].padStart(2,"0"),parts[2].padStart(2,"0")].join("-");
+}
 async function identifyRegistry(){
  const p=new URLSearchParams({q:"name = '"+registryName+"' and mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false",fields:"nextPageToken,files(id,name,mimeType)",pageSize:"100"});
  const d=await request("/drive/v3/files?"+p.toString());
@@ -77,15 +85,15 @@ async function loadOne(row){
  .map(x=>({id:asText(x["Activity ID"]),wbs:asText(x["WBS ID"]),title:asText(x["Activity name (English)"]),
   nepali:asText(x["Activity name (Nepali)"]),description:asText(x["Work description"]),
   duration:safe(x.Duration)===""?null:Number(x.Duration),unit:asText(x["Duration unit"]),
-  start:asText(x.Start),finish:asText(x.Finish),review:"Planning draft"}));
- const ids=new Set();
+  start:sourceDate(x.Start),finish:sourceDate(x.Finish),review:"Planning draft"}));
+ const ids=new Map();
  for(const a of activities){if(!a.id||!a.title||ids.has(a.id))throw Error("Invalid or duplicate activity for "+project_id);
-  ids.add(a.id);if(a.duration!==null&&(!Number.isFinite(a.duration)||a.duration<0))throw Error("Invalid work duration");}
- const links=rows(rels).map(x=>({from:asText(x["Predecessor activity ID"]),to:asText(x["Successor activity ID"]),
-  from_name:asText(x["Predecessor activity name"]),to_name:asText(x["Successor activity name"]),
+  ids.set(a.id,a.title);if(a.duration!==null&&(!Number.isFinite(a.duration)||a.duration<0))throw Error("Invalid work duration");}
+ const links=rows(rels).filter(x=>ids.has(x["Predecessor activity ID"])&&ids.has(x["Successor activity ID"]))
+ .map(x=>({from:x["Predecessor activity ID"],to:x["Successor activity ID"],
+  from_name:ids.get(x["Predecessor activity ID"]),to_name:ids.get(x["Successor activity ID"]),
   type:asText(x["Relation (FS SS FF SF)"]),lag:safe(x.Lag)===""?0:Number(x.Lag),
-  basis:asText(x["Lag unit"]),reason:asText(x["Reason in ordinary words"])}))
-  .filter(x=>ids.has(x.from)&&ids.has(x.to));
+  basis:asText(x["Lag unit"]),reason:asText(x["Reason in ordinary words"])}));
  if(links.some(l=>!["FS","SS","FF","SF"].includes(l.type)||!Number.isFinite(l.lag)))
   throw Error("Invalid schedule dependency type/lag");
  const relations=new Set();
@@ -95,7 +103,9 @@ async function loadOne(row){
  .map(x=>({id:asText(x["Package ID"]),name:asText(x["Package name"]),membership:asText(x["Activity membership IDs"]).split(/[;,]/).map(x=>x.trim()).filter(x=>ids.has(x))}));
  const draw=rows(drawings).filter(x=>x["Review state"]==="PUBLIC_SOURCE_ACCEPTED")
  .map(x=>({drawing:asText(x["Drawing ID"]),revision:asText(x.Revision),element:asText(x["Element ID"]),activity:asText(x["Activity ID"])}));
- const held=rows(holds).filter(x=>ids.has(x["Activity ID"])).map(x=>({id:asText(x["Hold ID"]),activity:asText(x["Activity ID"]),reason:asText(x.Reason),status:"Open"}));
+ const held=rows(holds).filter(x=>ids.has(x["Activity ID"])&&x["Release status"]==="OPEN"&&
+   ["Legacy v002 open hold","Public v002 hold","PUBLIC_APPROVED_FOR_DISPLAY"].includes(x.Evidence))
+  .map(x=>({id:asText(x["Hold ID"]),activity:asText(x["Activity ID"]),reason:asText(x.Reason),status:"Open"}));
  const result={id:project_id,title:asText(row.project_title),company:asText(row.company_title),company_key:asText(row.company_key),
   slug:asText(row.slug),group:asText(row.group),source_state:activities.length?"Planning draft — awaiting source review":"Schedule not yet provided",
   baseline_approved:false,site_progress_verified:false,engineering_release:false,
@@ -104,15 +114,19 @@ async function loadOne(row){
 }
 await mkdir(join(out,"projects"),{recursive:true});
 const id=await identifyRegistry();
-const list=rows(await sheet(id,"PROJECTS!A1:N100"));
+const list=rows(await sheet(id,"PROJECTS!A:N"));
 if(list.length!==22||new Set(list.map(x=>x.project_uid)).size!==22)throw Error("Canonical 22-project source index not complete");
+const privateIds=[id,...list.flatMap(row=>[row.schedule_sheet_id,row.narrative_doc_id])];
+if(new Set(privateIds).size!==privateIds.length||!privateIds.every(isId))throw Error("Registry source identities must be distinct and valid");
 const projects=[];const check=[];
 for(let i=0;i<list.length;i+=4){
  const chunk=await Promise.all(list.slice(i,i+4).map(loadOne));
  for(const x of chunk){projects.push({id:x.result.id,title:x.result.title,company:x.result.company,company_key:x.result.company_key,
   group:x.result.group,slug:x.result.slug,state:x.result.source_state,count:x.result.activities.length});
   check.push({id:x.result.id,sha256:x.sha,activities:x.result.activities.length,links:x.result.relationships.length});
-  await writeFile(join(out,"projects",x.result.id+".json"),JSON.stringify(x.result,null,2)+"\n");
+  const render=JSON.stringify(x.result,null,2);
+  if(privateIds.some(sourceId=>render.includes(sourceId)))throw Error("Private file identity in the public project output");
+  await writeFile(join(out,"projects",x.result.id+".json"),render+"\n");
  }
 }
 if(projects.length!==22)throw Error("Incomplete project projection");
