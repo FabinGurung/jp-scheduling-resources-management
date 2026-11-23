@@ -159,6 +159,16 @@ jobs:
             await writeFile(path,page.slice(0,end)+link+page.slice(end));
           }
           NODE
+      - name: Check out the Pages source gallery
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: gallery-release
+          sparse-checkout: .github/source-gallery
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - name: Install the registered Google Drive source gallery
+        run: python3 gallery-release/.github/source-gallery/install.py dist jp-scheduling-resources-management
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
