@@ -491,4 +491,6 @@ if(skinned.length!==66||redirectOnly.length!==15)
  throw Error("Unexpected Pages HTML inventory: "+skinned.length+" unified; "+redirectOnly.length+" redirects");
 console.log("SKYFORGE HTML INVENTORY PASS:",skinned.length+redirectOnly.length,"HTML outputs =",skinned.length,"unified +",redirectOnly.length,"redirect-only stubs");
 console.log("SKYFORGE SHARED SHELL PASS:",skinned.length,"public pages unified; legacy pages preserved under More.");
+const {installForeman}=await import("./install-skyforge-foreman.mjs");
+await installForeman(out,join(root,"assets","skyforge-foreman.mjs"),"schedules/resources/sources.html");
 console.log("Public Pages allowlist PASS: no repository-wide upload, no private engineering files");

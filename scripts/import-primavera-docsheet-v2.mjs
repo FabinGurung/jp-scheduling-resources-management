@@ -72,12 +72,18 @@ async function identifyRegistry(){
  if(d.nextPageToken||d.files?.length!==1||d.files[0]?.name!==registryName)throw Error("Expected exactly one authorized LIVE project index");
  return d.files[0].id;
 }
+async function sourceName(id,mime){
+ if(!isId(id))throw Error("Invalid source identity");
+ const meta=await request("/drive/v3/files/"+id+"?fields=name,mimeType");
+ if(meta.mimeType!==mime||!meta.name)throw Error("Source metadata mismatch");
+ return asText(meta.name);
+}
 async function loadOne(row){
  const project_id=asText(row.project_uid);
  if(!/^PORT-\d{6}$/.test(project_id))throw Error("Invalid project UID");
  const sh=row.schedule_sheet_id,dc=row.narrative_doc_id;
  if(!isId(sh)||!isId(dc))throw Error("Missing source identities for "+project_id);
- const [[project,wbs,acts,rels,packs,drawings,holds,calendarRows],words]=await Promise.all([schedule(sh),doc(dc)]);
+ const [[project,wbs,acts,rels,packs,drawings,holds,calendarRows],words,sheetName,docName]=await Promise.all([schedule(sh),doc(dc),sourceName(sh,"application/vnd.google-apps.spreadsheet"),sourceName(dc,"application/vnd.google-apps.document")]);
  const facts=Object.fromEntries(project.slice(1).map(x=>[safe(x[0]),safe(x[1])]));
  if(facts["Project ID"]!==project_id||facts["Project name"]!==row.project_title)
   throw Error("Project identity or title crosswalk mismatch for "+project_id);
@@ -113,7 +119,7 @@ async function loadOne(row){
   slug:asText(row.slug),group:asText(row.group),source_state:activities.length?"Planning draft — awaiting source review":"Schedule not yet provided",
   baseline_approved:false,site_progress_verified:false,engineering_release:false,
   activities,relationships:links,wbs:groups,packages:pack,drawings:draw,holds:held,calendar,milestones,public_narrative:words};
- return {result,sha:digest(result)};
+ return {result,sha:digest(result),sheetName,docName};
 }
 await mkdir(join(out,"projects"),{recursive:true});
 const id=await identifyRegistry();
@@ -125,12 +131,23 @@ if(moduleReg.length!==1||!isId(moduleReg[0]["Live source ID"]))throw Error("Miss
 const moduleId=moduleReg[0]["Live source ID"];
 const privateIds=[id,moduleId,...list.flatMap(row=>[row.schedule_sheet_id,row.narrative_doc_id])];
 if(new Set(privateIds).size!==privateIds.length||!privateIds.every(isId))throw Error("Registry source identities must be distinct and valid");
-const projects=[];const check=[];
+const projects=[];const check=[];const sourceEntries=[];
+const addSource=(name,kind,category,company,project,usage)=>sourceEntries.push({name:asText(name),kind,category,company:asText(company),project:asText(project),usage});
+addSource(registryName,"Sheet","Project registry","","","Project identities and resource registry");
+for(const [category,key,name,usage] of [["WORK_RATES","SKYFORGE_WORK_RATES_SHEET_ID","Skyforge — Work Output Rates — LIVE — V000001","Work output rates and crew references"],["MATERIAL_NORMS","SKYFORGE_MATERIALS_SHEET_ID","Skyforge — Material Consumption Norms — LIVE — V000001","Material consumption norms"]]){
+ const row=registeredResources.filter(x=>x.Category===category);
+ if(row.length!==1||!isId(row[0]["Live source ID"])||process.env[key]!==row[0]["Live source ID"])throw Error("Reference workbook identity not reconciled");
+ const actual=await sourceName(row[0]["Live source ID"],"application/vnd.google-apps.spreadsheet");if(actual!==name)throw Error("Unexpected reference workbook title");
+ addSource(actual,"Sheet","Resources","","",usage);
+}
+addSource(await sourceName(moduleId,"application/vnd.google-apps.spreadsheet"),"Sheet","Resources","","","Site module resources, checklists, activity links and rates");
 for(let i=0;i<list.length;i+=4){
  const chunk=await Promise.all(list.slice(i,i+4).map(loadOne));
  for(const x of chunk){projects.push({id:x.result.id,title:x.result.title,company:x.result.company,company_key:x.result.company_key,
   group:x.result.group,slug:x.result.slug,state:x.result.source_state,count:x.result.activities.length});
   check.push({id:x.result.id,sha256:x.sha,activities:x.result.activities.length,links:x.result.relationships.length});
+  addSource(x.docName,"Doc","Project sources",x.result.company,x.result.title,"Explicit public narrative paragraphs");
+  addSource(x.sheetName,"Sheet","Project sources",x.result.company,x.result.title,"Activities, dependencies, WBS, packages, drawings, holds and calendar");
   const render=JSON.stringify(x.result,null,2);
   if(privateIds.some(sourceId=>render.includes(sourceId)))throw Error("Private file identity in the public project output");
   await writeFile(join(out,"projects",x.result.id+".json"),render+"\n");
@@ -166,6 +183,10 @@ if(privateIds.some(sourceId=>moduleProjection.includes(sourceId)))throw Error("P
 await writeFile(join(out,"site-modules.json"),moduleProjection+"\n");
 console.log("PRIMAVERA_SITE_MODULES_IMPORT_PASS",JSON.stringify({modules:modules.length,resources:modules.reduce((a,m)=>a+m.resources.length,0),checklist:modules.reduce((a,m)=>a+m.checklist.length,0),links:modules.reduce((a,m)=>a+m.links.length,0)}));
 
+const linked=registeredResources.filter(r=>!["WORK_RATES","MATERIAL_NORMS","SITE_MODULES"].includes(r.Category)).map(r=>({name:asText(r.Label),kind:r.Category==="SITE_PACKAGES"?"Drive folder":"Doc",usage:"Registered reference; not read directly by this publisher"}));
+const sourceProjection=JSON.stringify({generated_at:new Date().toISOString(),inputs:sourceEntries,linked_references:linked},null,2);
+if(sourceEntries.length!==48||sourceEntries.filter(x=>x.kind==="Doc").length!==22||sourceEntries.filter(x=>x.kind==="Sheet").length!==26||privateIds.some(x=>sourceProjection.includes(x))||registeredResources.some(r=>r["Live source ID"]&&sourceProjection.includes(r["Live source ID"]))||forbidden(sourceProjection))throw Error("Invalid source register or private locator");
+await writeFile(join(out,"source-register.json"),sourceProjection+"\n");
 await writeFile(join(out,"project-index.json"),JSON.stringify({format:"PRIMAVERA_V2_PUBLIC_PROJECT_INDEX",projects},null,2)+"\n");
 await writeFile(join(out,"private-audit-only.json"),JSON.stringify({format:"PRIMAVERA_V2_SOURCE_MANIFEST",project_count:22,
   completed:new Date().toISOString(),records:check},null,2)+"\n");

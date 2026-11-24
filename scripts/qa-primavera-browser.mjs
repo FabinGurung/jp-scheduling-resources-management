@@ -31,6 +31,11 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     const directory = await page.goto(root + 'projects/index.html', {waitUntil: 'domcontentloaded'});
     assert.equal(directory.status(), 200);
+    await page.locator("skyforge-foreman").waitFor();
+    assert.equal(await page.locator("skyforge-foreman").count(),1);
+    await page.getByRole('button',{name:'Hide Foreman'}).click();
+    await page.getByRole('button',{name:'Show Foreman'}).waitFor();
+    await page.getByRole('button',{name:'Show Foreman'}).click();
     await page.getByText('22 projects found').waitFor();
     await page.locator('#search').fill('Narayani');
     assert.equal(await page.locator('.project-card').count(), 1);
@@ -83,6 +88,11 @@ try {
     await page.getByRole('heading',{name:'Readiness checklist'}).waitFor();
     await page.locator('#moduleSearch').fill('slab');
     assert.ok(await page.locator('#moduleList button').count()>=1);
+    await page.goto(root + 'resources/sources.html');
+    await page.getByText('48 automatically read files',{exact:false}).waitFor();
+    await page.locator('#sourceSearch').fill('Narayani');
+    assert.equal(await page.locator('#sourceList tbody tr').count(),2);
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2));
     assert.deepEqual(errors, []);
     await page.close();
     console.log(width + 'px: 22 projects, public Doc notes, all five views, empty source state and rate/norm search pass');

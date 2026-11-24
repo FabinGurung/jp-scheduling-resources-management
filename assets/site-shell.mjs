@@ -248,7 +248,8 @@ function createShell(){
  // Keep the mascot in its own decorative rail on project directories and
  // reference pages; never let it float across project cards or form controls.
  const compactWorkspace=pageKey().startsWith("projects/")||pageKey().startsWith("more/")||pageKey().startsWith("work-items/");
- if(!compactWorkspace)roamController=createPipRoam(pip,header,reduced);
+ if(document.querySelector("script[data-skyforge-foreman]")){rail.style.display="none";motion.style.display="none";motion.disabled=true;}
+ else if(!compactWorkspace)roamController=createPipRoam(pip,header,reduced);
  else{pip.setAttribute("aria-hidden","true");motion.hidden=true;motion.disabled=true;}
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",createShell,{once:true});else createShell();
