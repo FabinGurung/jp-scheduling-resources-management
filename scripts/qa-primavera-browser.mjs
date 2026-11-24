@@ -13,7 +13,7 @@ const server = createServer(async (req, res) => {
     const route = path.replace(/^\/schedules\//, '');
     if (route.startsWith('/') || route.split('/').includes('..')) throw Error('Invalid preview route');
     const name = resolve('dist-v2', route + (path.endsWith('/') ? 'index.html' : ''));
-    const mime = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json'};
+    const mime = {'.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json'};
     res.setHeader('Content-Type', mime[extname(name)] ?? 'application/octet-stream');
     res.end(await readFile(name));
   } catch {
@@ -29,6 +29,7 @@ try {
     const page = await browser.newPage({viewport: {width, height: 900}, isMobile: width < 500, hasTouch: width < 500});
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
+    page.on("console",msg=>{if(msg.type()==="error")console.log("Browser console:",msg.text())});
     const directory = await page.goto(root + 'projects/index.html', {waitUntil: 'domcontentloaded'});
     assert.equal(directory.status(), 200);
     await page.locator("skyforge-foreman").waitFor();

@@ -17,14 +17,14 @@ function mount(){
  button,a{font:inherit;color:#155c63;background:#fff;border:1px solid #bfdbd7;border-radius:6px;padding:5px 8px;text-decoration:none;cursor:pointer}
  button:focus-visible,a:focus-visible{outline:2px solid #146e72;outline-offset:2px}
  .worker{animation:route 20s linear infinite}.legA{transform-origin:0 0;animation:stride .46s ease-in-out infinite alternate}.legB{transform-origin:0 0;animation:stride .46s ease-in-out infinite alternate-reverse}
- @keyframes route{0%,5%{transform:translate(36px,26px)} 34%{transform:translate(278px,26px)} 48%{transform:translate(278px,62px)} 80%{transform:translate(490px,62px)} 84%,100%{transform:translate(490px,62px);opacity:1} 99.5%{opacity:0}}
+ @keyframes route{0%{transform:translate(36px,31px);opacity:0} 5%{transform:translate(36px,31px);opacity:1} 34%{transform:translate(278px,31px)} 48%{transform:translate(280px,67px)} 80%{transform:translate(490px,67px)} 84%,94%{transform:translate(490px,67px);opacity:1} 100%{transform:translate(490px,67px);opacity:0}}
  @keyframes stride{from{transform:rotate(-17deg)}to{transform:rotate(17deg)}}
  .hidden .scene{display:none}.hidden{min-height:30px}.hidden .tools{margin-left:auto}
  .paused .worker,.paused .legA,.paused .legB{animation:none!important}
- .paused .worker{transform:translate(36px,26px)}
+ .paused .worker{transform:translate(36px,31px)}
  @media(max-width:600px){.wrap{gap:5px;padding:3px 10px}.scene{height:56px}.tools{gap:4px;max-width:125px}button,a{font-size:10px;padding:4px 6px}}
- @media(prefers-reduced-motion:reduce){.worker,.legA,.legB{animation:none!important}.worker{transform:translate(36px,26px)}}
- </style><div class="wrap"><svg class="scene" viewBox="0 0 550 82" aria-hidden="true" focusable="false">
+ @media(prefers-reduced-motion:reduce){.worker,.legA,.legB{animation:none!important}.worker{transform:translate(36px,31px)}}
+ </style><div class="wrap"><svg class="scene" viewBox="0 -10 550 92" aria-hidden="true" focusable="false">
  <g fill="#e1efec" stroke="#79a7a3"><rect x="10" y="31" width="279" height="12" rx="4"/><rect x="270" y="67" width="266" height="12" rx="4"/></g>
  <g stroke="#aa7e48" stroke-width="2.3" fill="none"><path d="M273 36V67M287 36V67M273 42H287M273 48H287M273 54H287M273 60H287"/></g>
  <g fill="#225d60" font-family="system-ui,sans-serif" font-size="9" font-weight="600"><text id="stepOne" x="12" y="29">Plan</text><text id="stepTwo" x="299" y="65">Review</text></g>
