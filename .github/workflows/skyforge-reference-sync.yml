@@ -168,6 +168,36 @@ jobs:
           persist-credentials: false
       - name: Install the registered Google Drive source gallery
         run: python3 gallery-release/.github/source-gallery/install.py dist jp-scheduling-resources-management
+      - name: Verify Foreman and source directory in the final combined Pages artifact
+        run: |
+          node --input-type=module <<'NODE'
+          import {readFile,readdir,stat} from 'node:fs/promises';
+          import {join} from 'node:path';
+          import assert from 'node:assert/strict';
+          let live=0,redirects=0;
+          async function walk(dir){
+            for(const e of await readdir(dir,{withFileTypes:true})){
+              const file=join(dir,e.name);
+              if(e.isDirectory()){await walk(file);continue;}
+              if(!file.endsWith('.html'))continue;
+              const html=await readFile(file,'utf8');
+              if(/<meta\b[^>]*http-equiv\s*=\s*["']?refresh\b/i.test(html)){redirects++;continue;}
+              assert.equal((html.match(/data-skyforge-foreman\b/g)||[]).length,1,file);
+              live++;
+            }
+          }
+          await walk('dist');
+          assert.equal(live,79);assert.equal(redirects,15);
+          await stat('dist/schedules/resources/sources.html');
+          assert.equal(await readFile('dist/assets/skyforge-foreman.mjs','utf8'),await readFile('dist/schedules/assets/skyforge-foreman.mjs','utf8'));
+          const raw=await readFile('dist/schedules/data/source-register.json','utf8');
+          assert.ok(!/docs\.google\.com\/|drive\.google\.com\/|@|access_token|ya29\.|PRIVATE KEY/i.test(raw));
+          const r=JSON.parse(raw);
+          assert.equal(r.inputs.length,48);
+          assert.equal(r.inputs.filter(x=>x.kind==='Doc').length,22);
+          assert.equal(r.inputs.filter(x=>x.kind==='Sheet').length,26);
+          console.log('SKYFORGE_FOREMAN_RELEASE_PASS',JSON.stringify({interactive_pages:live,redirects,live_sources:r.inputs.length}));
+          NODE
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
