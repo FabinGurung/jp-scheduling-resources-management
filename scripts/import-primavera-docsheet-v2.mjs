@@ -1,6 +1,6 @@
 // Skyforge v2 source importer. The editable data lives ONLY in controlled Google Docs/Sheets.
 // This file contains no Google file IDs, source records or project-specific page code.
-import {mkdir,writeFile} from "node:fs/promises";
+import {mkdir,writeFile,readFile} from "node:fs/promises";
 import {createHash} from "node:crypto";
 import {resolve,join} from "node:path";
 
@@ -38,7 +38,7 @@ async function sheet(id,range){
 async function schedule(id){
  if(!isId(id))throw Error("Invalid registered Sheet identity");
  // Open-ended row ranges allow projects to grow without silently clipping rows.
- const ranges=["PROJECT!A:C","WBS!A:E","ACTIVITIES!A:M","RELATIONSHIPS!A:J","PACKAGES!A:F","DRAWINGS!A:G","HOLDS!A:F"];
+ const ranges=["PROJECT!A:C","WBS!A:E","ACTIVITIES!A:M","RELATIONSHIPS!A:J","PACKAGES!A:F","DRAWINGS!A:G","HOLDS!A:F","CALENDAR!A:E"];
  const query=new URLSearchParams({valueRenderOption:"UNFORMATTED_VALUE",dateTimeRenderOption:"FORMATTED_STRING"});
  for(const range of ranges)query.append("ranges",range);
  const data=await request("/sheets/v4/spreadsheets/"+id+"/values:batchGet?"+query);
@@ -77,7 +77,7 @@ async function loadOne(row){
  if(!/^PORT-\d{6}$/.test(project_id))throw Error("Invalid project UID");
  const sh=row.schedule_sheet_id,dc=row.narrative_doc_id;
  if(!isId(sh)||!isId(dc))throw Error("Missing source identities for "+project_id);
- const [[project,wbs,acts,rels,packs,drawings,holds],words]=await Promise.all([schedule(sh),doc(dc)]);
+ const [[project,wbs,acts,rels,packs,drawings,holds,calendarRows],words]=await Promise.all([schedule(sh),doc(dc)]);
  const facts=Object.fromEntries(project.slice(1).map(x=>[safe(x[0]),safe(x[1])]));
  if(facts["Project ID"]!==project_id||facts["Project name"]!==row.project_title)
   throw Error("Project identity or title crosswalk mismatch for "+project_id);
@@ -106,17 +106,24 @@ async function loadOne(row){
  const held=rows(holds).filter(x=>ids.has(x["Activity ID"])&&x["Release status"]==="OPEN"&&
    ["Legacy v002 open hold","Public v002 hold","PUBLIC_APPROVED_FOR_DISPLAY"].includes(x.Evidence))
   .map(x=>({id:asText(x["Hold ID"]),activity:asText(x["Activity ID"]),reason:asText(x.Reason),status:"Open"}));
+ const calendar=rows(calendarRows).map(x=>({day:asText(x["Day or holiday"]),working:asText(x["Is working day"]),hours:Number(x["Work hours"]||0),effective:asText(x["Effective dates"])}));
+ if(calendar.some(x=>!["Yes","No"].includes(x.working)||!Number.isFinite(x.hours)||x.hours<0||x.hours>24))throw Error("Invalid reference calendar");
+ const milestones=activities.filter(a=>a.duration===0).map(a=>({id:a.id,title:a.title,wbs:a.wbs,date:a.start}));
  const result={id:project_id,title:asText(row.project_title),company:asText(row.company_title),company_key:asText(row.company_key),
   slug:asText(row.slug),group:asText(row.group),source_state:activities.length?"Planning draft — awaiting source review":"Schedule not yet provided",
   baseline_approved:false,site_progress_verified:false,engineering_release:false,
-  activities,relationships:links,wbs:groups,packages:pack,drawings:draw,holds:held,public_narrative:words};
+  activities,relationships:links,wbs:groups,packages:pack,drawings:draw,holds:held,calendar,milestones,public_narrative:words};
  return {result,sha:digest(result)};
 }
 await mkdir(join(out,"projects"),{recursive:true});
 const id=await identifyRegistry();
 const list=rows(await sheet(id,"PROJECTS!A:N"));
 if(list.length!==22||new Set(list.map(x=>x.project_uid)).size!==22)throw Error("Canonical 22-project source index not complete");
-const privateIds=[id,...list.flatMap(row=>[row.schedule_sheet_id,row.narrative_doc_id])];
+const registeredResources=rows(await sheet(id,"RESOURCE_LIBRARY!A:E"));
+const moduleReg=registeredResources.filter(r=>r.Category==="SITE_MODULES");
+if(moduleReg.length!==1||!isId(moduleReg[0]["Live source ID"]))throw Error("Missing distinct registered site-module workbook");
+const moduleId=moduleReg[0]["Live source ID"];
+const privateIds=[id,moduleId,...list.flatMap(row=>[row.schedule_sheet_id,row.narrative_doc_id])];
 if(new Set(privateIds).size!==privateIds.length||!privateIds.every(isId))throw Error("Registry source identities must be distinct and valid");
 const projects=[];const check=[];
 for(let i=0;i<list.length;i+=4){
@@ -130,6 +137,35 @@ for(let i=0;i<list.length;i+=4){
  }
 }
 if(projects.length!==22)throw Error("Incomplete project projection");
+
+const moduleText=x=>{
+ const s=String(x??"").replace(/(\d)\s*@\s*(\d)/g,"$1 at $2");
+ if(/https?:\/\//i.test(s))throw Error("URL in public module field");
+ return asText(s);
+};
+const [moduleRows,resourceRows,checkRows,linkRows,rateRows]=await Promise.all(["MODULES!A:D","RESOURCES!A:E","CHECKLIST!A:D","ACTIVITY_LINKS!A:D","RATE_LINKS!A:E"].map(range=>sheet(moduleId,range)));
+const modules=rows(moduleRows).map(x=>({id:moduleText(x["Module ID"]),title:moduleText(x["Work module"]),scope:moduleText(x.Scope),review:moduleText(x["Review state"]),resources:[],checklist:[],links:[],rates:[]}));
+const modMap=new Map(modules.map(m=>[m.id,m]));
+if(modMap.size!==modules.length||!modules.length||modules.some(m=>!m.title||!m.review||!/^[A-Z0-9-]+$/.test(m.id)))throw Error("Invalid or duplicate site module");
+const lookupModule=x=>{const m=modMap.get(x["Module ID"]);if(!m)throw Error("Unmatched module reference");return m;};
+for(const x of rows(resourceRows))lookupModule(x).resources.push({category:moduleText(x.Category),item:moduleText(x["Required item"]),example:moduleText(x["Example count"]),verification:moduleText(x.Verification)});
+for(const x of rows(checkRows))lookupModule(x).checklist.push({step:moduleText(x.Step),stage:moduleText(x.Stage),text:moduleText(x["Source-based checklist"])});
+for(const x of rows(rateRows))lookupModule(x).rates.push({profile:moduleText(x["Rate profile"]),unit:moduleText(x.Unit),grade:moduleText(x.Grade)});
+const projectModels=new Map();
+for(const project of projects){
+ const data=JSON.parse(await readFile(join(out,"projects",project.id+".json"),"utf8"));
+ projectModels.set(project.id,new Set(data.activities.map(a=>a.id)));
+}
+for(const x of rows(linkRows)){
+ const project=moduleText(x["Project UID"]),activity=moduleText(x["Activity ID"]);
+ if(!projectModels.get(project)?.has(activity))throw Error("Module link does not match project activity");
+ lookupModule(x).links.push({project,activity,review:moduleText(x["Review state"])});
+}
+const moduleProjection=JSON.stringify({modules,construction_release:false},null,2);
+if(privateIds.some(sourceId=>moduleProjection.includes(sourceId)))throw Error("Private file identity in site module projection");
+await writeFile(join(out,"site-modules.json"),moduleProjection+"\n");
+console.log("PRIMAVERA_SITE_MODULES_IMPORT_PASS",JSON.stringify({modules:modules.length,resources:modules.reduce((a,m)=>a+m.resources.length,0),checklist:modules.reduce((a,m)=>a+m.checklist.length,0),links:modules.reduce((a,m)=>a+m.links.length,0)}));
+
 await writeFile(join(out,"project-index.json"),JSON.stringify({format:"PRIMAVERA_V2_PUBLIC_PROJECT_INDEX",projects},null,2)+"\n");
 await writeFile(join(out,"private-audit-only.json"),JSON.stringify({format:"PRIMAVERA_V2_SOURCE_MANIFEST",project_count:22,
   completed:new Date().toISOString(),records:check},null,2)+"\n");

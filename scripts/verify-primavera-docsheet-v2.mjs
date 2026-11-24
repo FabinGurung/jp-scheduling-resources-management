@@ -20,7 +20,7 @@ for(const p of index.projects){
  const route=join("projects",old.company,old.slug,"index.html");
  await stat(resolve("dist",route));
  if(old.legacy_portfolio_slug)await stat(resolve("dist","projects","portfolio",old.legacy_portfolio_slug,"index.html"));
- crosswalk.push({id:p.id,shared:"schedules/projects/view.html?project="+p.id,retained:route});
+ crosswalk.push({id:p.id,shared:"schedules/projects/activities.html?project="+p.id,retained:route});
 }
 console.log("PRIMAVERA_V2_ROUTE_CROSSWALK_PASS",JSON.stringify({projects:crosswalk.length,retained_aliases:legacy.projects.filter(p=>p.legacy_portfolio_slug).length}));
 
@@ -60,6 +60,8 @@ for(const [i,html] of core.entries()){
   throw Error("Developer or machine terminology leaked into customer UI "+i);
  assert.match(html,/Home/);assert.match(html,/Projects/);assert.match(html,/Resources/);
 }
+for(const route of ["activities","gantt","calendar","milestones","packages","drawings","history"]){const html=await readFile(join(dir,"projects",route+".html"),"utf8");assert.ok(html.includes('data-view="'+route+'"'),"Missing independent route "+route);}
+const modulesText=await readFile(join(data,"resources","site-modules.json"),"utf8");assert.ok(!privateSourcePattern.test(modulesText),"Private source reference leaked in site modules");const modules=JSON.parse(modulesText);assert.equal(modules.construction_release,false);assert.ok(modules.modules.some(m=>m.id==="WP-001"&&m.checklist.length));assert.ok(modules.modules.some(m=>m.id==="R02-SLB"&&m.links.length));await stat(join(dir,"resources","modules.html"));
 const resources=await Promise.all(["productivity-norms.v1.json","material-references.v1.json"].map(f=>json(join(data,"resources",f))));
 assert.equal(resources[0].items.length,88);assert.equal(resources[1].recipes.length,36);
 assert.ok(resources[0].items.some(item=>item.rate?.hours_per_day>0),"Published work rates are missing");
