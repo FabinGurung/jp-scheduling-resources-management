@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: renovation-docsheet-v2-20261121
+          ref: 6785d6d2b4c68ddef83691ff7a1ffce33c6a37a6
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -68,7 +68,7 @@ jobs:
         env:
           GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.google.outputs.access_token }}
         run: node scripts/sync-reference-norms.mjs --pull-sheets
-      - name: Fetch all live per-project Docs and Sheets and build privacy-reduced project data
+      - name: Fetch all live project sources and registered Site Modules
         env:
           GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.google.outputs.access_token }}
         run: node scripts/import-primavera-docsheet-v2.mjs
