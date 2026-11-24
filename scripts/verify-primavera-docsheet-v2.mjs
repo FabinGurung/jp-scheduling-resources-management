@@ -7,6 +7,23 @@ const json=async f=>JSON.parse(await readFile(f,"utf8"));
 const index=await json(join(data,"project-index.json"));
 assert.equal(index.projects.length,22,"All registered projects must be available");
 const ids=new Set(index.projects.map(x=>x.id));assert.equal(ids.size,22);
+const legacy=await json(resolve("projects","registry.json"));
+const legacyById=new Map(legacy.projects.map(p=>[p.id,p]));
+assert.equal(legacyById.size,ids.size,"Legacy and shared project inventories differ");
+const crosswalk=[];
+for(const p of index.projects){
+ const old=legacyById.get(p.id);
+ assert.ok(old,"No retained project route for "+p.id);
+ assert.equal(p.title,old.title,"Project title changed across publication routes");
+ assert.equal(p.company_key,old.company,"Company changed across publication routes");
+ assert.equal(p.slug,old.slug,"Project slug changed across publication routes");
+ const route=join("projects",old.company,old.slug,"index.html");
+ await stat(resolve("dist",route));
+ if(old.legacy_portfolio_slug)await stat(resolve("dist","projects","portfolio",old.legacy_portfolio_slug,"index.html"));
+ crosswalk.push({id:p.id,shared:"schedules/projects/activities.html?project="+p.id,retained:route});
+}
+console.log("PRIMAVERA_V2_ROUTE_CROSSWALK_PASS",JSON.stringify({projects:crosswalk.length,retained_aliases:legacy.projects.filter(p=>p.legacy_portfolio_slug).length}));
+
 let complete=0,totalActs=0,totalLinks=0;
 const privateSourcePattern=/docs\.google\.com\/|drive\.google\.com\/|@|access_token|ya29\.|PRIVATE KEY/i;
 for(const p of index.projects){
@@ -43,6 +60,8 @@ for(const [i,html] of core.entries()){
   throw Error("Developer or machine terminology leaked into customer UI "+i);
  assert.match(html,/Home/);assert.match(html,/Projects/);assert.match(html,/Resources/);
 }
+for(const route of ["activities","gantt","calendar","milestones","packages","drawings","history"]){const html=await readFile(join(dir,"projects",route+".html"),"utf8");assert.ok(html.includes('data-view="'+route+'"'),"Missing independent route "+route);}
+const modulesText=await readFile(join(data,"resources","site-modules.json"),"utf8");assert.ok(!privateSourcePattern.test(modulesText),"Private source reference leaked in site modules");const modules=JSON.parse(modulesText);assert.equal(modules.construction_release,false);assert.ok(modules.modules.some(m=>m.id==="WP-001"&&m.checklist.length));assert.ok(modules.modules.some(m=>m.id==="R02-SLB"&&m.links.length));await stat(join(dir,"resources","modules.html"));
 const resources=await Promise.all(["productivity-norms.v1.json","material-references.v1.json"].map(f=>json(join(data,"resources",f))));
 assert.equal(resources[0].items.length,88);assert.equal(resources[1].recipes.length,36);
 assert.ok(resources[0].items.some(item=>item.rate?.hours_per_day>0),"Published work rates are missing");

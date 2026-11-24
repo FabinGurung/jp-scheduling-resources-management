@@ -18,7 +18,7 @@ async function directory(){
   const records=data.projects.filter(p=>(!filter.value||p.company===filter.value)&&
    (!query||(p.title+" "+p.company+" "+p.group).toLowerCase().includes(query)));
   $("count").textContent=records.length+" project"+(records.length===1?"":"s")+" found";
-  for(const p of records){const a=href(list,"","view.html?project="+encodeURIComponent(p.id),"project-card");
+  for(const p of records){const a=href(list,"","activities.html?project="+encodeURIComponent(p.id),"project-card");
    a.style.setProperty("--company",companyColor[p.company_key]||"#21868a");
    make(a,"strong","",p.title);make(a,"span","",p.company+" · "+p.group);make(a,"span","",p.state);}
   if(!records.length)empty(list,"No matching projects. Try a different name or company.");
@@ -40,10 +40,15 @@ async function workspace(){
   for(const paragraph of model.public_narrative)make(notes,"p","",paragraph);
   $("stage").after(notes);
  }
+ // Historical routes remain available during the source migration.
+ const footer=document.querySelector("main footer");
+ if(footer&&/^(fishtail|rohini|jp|paila)$/.test(model.company_key)&&/^[a-z0-9-]+$/.test(model.slug)){
+  href(footer,"Previous project page","../../projects/"+model.company_key+"/"+model.slug+"/");
+ }
  document.title=model.title+" — Skyforge";
  const controls={tab:"activities",wbs:"",search:"",offset:0,packageStart:1,packageEnd:Math.min(15,model.activities.length),week:0,month:0};
- const initial=(location.hash||"").replace("#","");
- if(["activities","gantt","calendar","packages","drawings"].includes(initial))controls.tab=initial;
+ const initial=document.body.dataset.view||(location.hash||"").replace("#","");
+ if(["activities","gantt","calendar","milestones","packages","drawings","history"].includes(initial))controls.tab=initial;
  const inspector=$("inspector"),view=$("view"),left=$("leftStages");
  const activities=model.activities||[],byId=new Map(activities.map(a=>[a.id,a]));
  function setInspector(item){inspector.replaceChildren();
@@ -74,6 +79,7 @@ async function workspace(){
    }
   }
   make(inspector,"p","small muted","Site progress and construction release are not verified.");
+  href(inspector,"Site modules for this activity","../resources/modules.html?project="+encodeURIComponent(model.id)+"&activity="+encodeURIComponent(a.id));
  }
  function stageList(){left.replaceChildren();const all=make(left,"button","","All work stages");all.type="button";all.onclick=()=>{controls.wbs="";controls.offset=0;render();};
   for(const w of model.wbs||[]){const b=make(left,"button","",w.name);b.type="button";b.onclick=()=>{controls.wbs=w.id;controls.offset=0;render();};}}
@@ -99,14 +105,14 @@ async function workspace(){
  const finishValue=a=>/^R\+(\d+)$/.test(a.finish||"")?Number(a.finish.slice(2)):
   /^\d{4}-\d{2}-\d{2}$/.test(a.finish||"")?Date.parse(a.finish)/86400000:null;
  function ganttView(){const found=matching();if(!found.length)return empty(view,"No Gantt data has been admitted yet.");paged(view,found,(box,arr)=>{
-  const xs=arr.map(startValue).filter(x=>x!==null),ys=arr.map(finishValue).filter(x=>x!==null);
+  const xs=found.map(startValue).filter(x=>x!==null),ys=found.map(finishValue).filter(x=>x!==null);
   const lo=Math.min(...xs),hi=Math.max(...ys,lo+1),span=Math.max(1,hi-lo);
   for(const a of arr){const row=make(box,"div","gantt-row");const label=make(row,"button","row-action",a.title);label.type="button";label.onclick=()=>setInspector({kind:"activity",activity:a});
    const track=make(row,"div","gantt-track");const b=make(track,"span","gantt-bar");
    const st=startValue(a),en=finishValue(a);if(st===null||en===null){b.style.display="none";continue;}
    b.style.left=(100*(st-lo)/span)+"%";b.style.width=Math.max(1,100*(en-st)/span)+"%";}
  });}
- function calendarView(){if(!activities.length)return empty(view,"No project calendar can be displayed until activities are available.");
+ function calendarView(){if(model.calendar?.length){const summary=make(view,"p","notice",model.calendar.filter(d=>d.working==="No").map(d=>d.day).join(", ")+" non-working; "+(model.calendar.find(d=>d.working==="Yes")?.hours??"Unspecified")+" hours per working day. Reference policy; no approved calendar or attendance implied.");}if(!activities.length)return empty(view,"No project calendar can be displayed until activities are available.");
   const relative=activities.some(a=>/^R\+\d+$/.test(a.start||""));
   const bar=make(view,"div","toolbar");
   if(relative){const lbl=make(bar,"label","","Relative week ");const input=make(lbl,"input");input.type="number";input.min="1";input.value=controls.week+1;input.style.width="90px";
@@ -131,7 +137,7 @@ async function workspace(){
     b.onclick=()=>setInspector({kind:"day",title:date,activities:hits});}
   }
  }
- function packageView(){if(!activities.length)return empty(view,"Work packages will appear once activities are available.");
+ function packageView(){href(view,"Open individual site modules","../resources/modules.html?project="+encodeURIComponent(model.id));if(!activities.length)return empty(view,"Work packages will appear once activities are available.");
   const t=make(view,"div","toolbar");const start=make(t,"input");start.type="number";start.min="1";start.max=activities.length;start.value=controls.packageStart;start.style.width="110px";start.setAttribute("aria-label","Package first activity position");
   const end=make(t,"input");end.type="number";end.min="1";end.max=activities.length;end.value=controls.packageEnd;end.style.width="110px";end.setAttribute("aria-label","Package last activity position");
   const show=make(t,"button","","Show package");show.type="button";
@@ -148,10 +154,12 @@ async function workspace(){
  }
  function drawingView(){const entries=model.drawings||[];if(!entries.length){empty(view,"No drawing-to-activity links have passed source review for this project.");const p=make(view,"p","muted","The drawing repository retains authoritative working drawings and their revision history.");href(view,"Open drawing library","https://fabingurung.github.io/jp-drawing-coordination/");return;}
   for(const d of entries){const b=make(view,"button","row-action",d.drawing+" · Revision "+d.revision);b.type="button";b.onclick=()=>setInspector({kind:"drawing",title:d.drawing});}}
+ function milestoneView(){const milestones=activities.filter(a=>a.duration===0);make(view,"p","notice","Zero-duration milestones and inspection gates from the planning source; not actual completion.");if(!milestones.length)return empty(view,"No recorded milestones.");makeRowList(view,milestones);}
+ function historyView(){make(view,"h3","","Previous planning editions");make(view,"p","muted","Previous versions are retained for source comparison and review.");if(/^(fishtail|rohini|jp|paila)$/.test(model.company_key)&&/^[a-z0-9-]+$/.test(model.slug))href(view,"Open previous project page","../../projects/"+model.company_key+"/"+model.slug+"/");if(model.id==="PORT-000001"){make(view,"p");href(view,"Narayani v002 schedule","../../projects/narayani/schedule-v002.html");}if(model.id==="PORT-000014"){make(view,"p");href(view,"Harisharan v002 schedule","../../projects/fishtail/harisharan-residence/schedule-v002.html");make(view,"p");href(view,"Harisharan v003 measured BOQ reference","../../projects/fishtail/harisharan-residence/boq-v003.html");}}
  function render(){view.replaceChildren();for(const b of document.querySelectorAll(".tabs button"))b.setAttribute("aria-selected",b.dataset.view===controls.tab?"true":"false");
-  if(controls.tab==="activities")activityView();else if(controls.tab==="gantt")ganttView();else if(controls.tab==="calendar")calendarView();else if(controls.tab==="packages")packageView();else drawingView();}
- for(const tab of document.querySelectorAll(".tabs button"))tab.onclick=()=>{controls.tab=tab.dataset.view;controls.offset=0;location.hash=controls.tab;render();};
- stageList();render();if(activities.length)setInspector({kind:"activity",activity:activities[0]});
+  if(controls.tab==="activities")activityView();else if(controls.tab==="gantt")ganttView();else if(controls.tab==="calendar")calendarView();else if(controls.tab==="milestones")milestoneView();else if(controls.tab==="packages")packageView();else if(controls.tab==="history")historyView();else drawingView();}
+ for(const tab of document.querySelectorAll(".tabs button"))tab.onclick=()=>{location.assign(tab.dataset.view+".html?project="+encodeURIComponent(model.id));};
+ stageList();const selectedActivity=byId.get(new URLSearchParams(location.search).get("activity"));if(selectedActivity&&controls.tab==="activities")controls.offset=Math.floor(activities.indexOf(selectedActivity)/50)*50;render();if(activities.length)setInspector({kind:"activity",activity:selectedActivity||activities[0]});
  else empty(inspector,"This project does not yet have an accepted scheduling register.");
 }
 async function resources(){
@@ -162,7 +170,7 @@ async function resources(){
   for(const [title,desc,count,label,link] of [
    ["Work output rates","Labour days per unit of work.",work.items.length,"Open work rates calculator","../../work-items/productivity.html"],
    ["Material consumption norms","Material quantities per unit of work.",materials.recipes.length,"Open materials planner","../../work-items/materials.html"],
-   ["Site work packages","Activity bundles and project planning notes.",null,"Find project packages","../projects/index.html"],
+   ["Site modules","Activity-specific resources, prerequisites and readiness checks.",null,"Open site modules","modules.html"],
    ["Construction guidance","Reference notes and review requirements.",null,"Open construction guidance","../../knowledge/index.html"]]){
     const card=make(holder,"section","card");make(card,"h2","",title);make(card,"p","",desc);
     href(card,label,link);if(count!==null)pill(card,count+" reference entries");}
@@ -180,5 +188,19 @@ async function resources(){
   search.oninput=draw;draw();
  }catch{holder.replaceChildren();empty(holder,"The resource references could not be refreshed. The project library remains accessible.");}
 }
-try{if(document.body.dataset.page==="home")await homepage();else if(document.body.dataset.page==="projects")await directory();else if(document.body.dataset.page==="project")await workspace();else if(document.body.dataset.page==="resources")await resources();}
-catch(err){const place=$("view")||$("projects")||$("count")||$("resourceCards");if(place){place.replaceChildren();empty(place,"Information could not be loaded. Please try again after the latest published update.");}console.error("Skyforge public view loading failed",err.message);}
+async function siteModules(){
+ const data=await json("data/resources/site-modules.json"), holder=$("moduleList"),search=$("moduleSearch"),detail=$("moduleDetail");
+ const params=new URLSearchParams(location.search),project=params.get("project"),activity=params.get("activity");
+ function open(m){detail.replaceChildren();make(detail,"h2","",m.title);make(detail,"p","notice",m.review+" — reference only, not a work release.");
+  for(const [title,rows,headers,fields] of [["Resources",m.resources,["Category","Required item","Example count","Verification"],["category","item","example","verification"]],["Readiness checklist",m.checklist,["Step","Stage","Source requirement"],["step","stage","text"]],["Reference rate links",m.rates,["Profile","Unit","Grade"],["profile","unit","grade"]]]){
+   make(detail,"h3","",title);if(!rows.length){empty(detail,"Not yet recorded.");continue;}
+   const table=make(make(detail,"div","table-wrap"),"table"),head=make(make(table,"thead"),"tr");for(const h of headers)make(head,"th","",h).scope="col";
+   const b=make(table,"tbody");for(const r of rows){const tr=make(b,"tr");for(const f of fields)make(tr,"td","",r[f]||"—");}
+  }
+  make(detail,"h3","","Linked project activities");if(!m.links.length)empty(detail,"Project activity mapping not yet verified.");for(const l of m.links){const p=make(detail,"p","");href(p,"Open "+l.activity,"../projects/activities.html?project="+encodeURIComponent(l.project)+"&activity="+encodeURIComponent(l.activity));make(p,"span","muted"," · "+l.review);}
+ }
+ function draw(){holder.replaceChildren();const q=search.value.trim().toLowerCase();const found=data.modules.filter(m=>(!project||m.links.some(l=>l.project===project&&(!activity||l.activity===activity)))&&(m.title+" "+m.scope).toLowerCase().includes(q));$("moduleCount").textContent=found.length+" site modules";for(const m of found){const b=make(holder,"button","row-action",m.title);b.type="button";b.onclick=()=>open(m);make(holder,"p","small muted",m.scope+" · "+m.review);}if(!found.length)empty(holder,"No linked modules for this selection.");else open(found[0]);}
+ search.oninput=draw;draw();
+}
+try{if(document.body.dataset.page==="home")await homepage();else if(document.body.dataset.page==="projects")await directory();else if(document.body.dataset.page==="project")await workspace();else if(document.body.dataset.page==="resources")await resources();else if(document.body.dataset.page==="modules")await siteModules();}
+catch(err){const place=$("view")||$("projects")||$("count")||$("resourceCards")||$("moduleList");if(place){place.replaceChildren();empty(place,"Information could not be loaded. Please try again after the latest published update.");}console.error("Skyforge public view loading failed",err.message);}
