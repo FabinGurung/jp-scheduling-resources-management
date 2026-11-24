@@ -79,6 +79,7 @@ async function workspace(){
    }
   }
   make(inspector,"p","small muted","Site progress and construction release are not verified.");
+  href(inspector,"Site modules for this activity","../resources/modules.html?project="+encodeURIComponent(model.id)+"&activity="+encodeURIComponent(a.id));
  }
  function stageList(){left.replaceChildren();const all=make(left,"button","","All work stages");all.type="button";all.onclick=()=>{controls.wbs="";controls.offset=0;render();};
   for(const w of model.wbs||[]){const b=make(left,"button","",w.name);b.type="button";b.onclick=()=>{controls.wbs=w.id;controls.offset=0;render();};}}
@@ -158,7 +159,7 @@ async function workspace(){
  function render(){view.replaceChildren();for(const b of document.querySelectorAll(".tabs button"))b.setAttribute("aria-selected",b.dataset.view===controls.tab?"true":"false");
   if(controls.tab==="activities")activityView();else if(controls.tab==="gantt")ganttView();else if(controls.tab==="calendar")calendarView();else if(controls.tab==="milestones")milestoneView();else if(controls.tab==="packages")packageView();else if(controls.tab==="history")historyView();else drawingView();}
  for(const tab of document.querySelectorAll(".tabs button"))tab.onclick=()=>{location.assign(tab.dataset.view+".html?project="+encodeURIComponent(model.id));};
- stageList();render();if(activities.length)setInspector({kind:"activity",activity:activities[0]});
+ stageList();const selectedActivity=byId.get(new URLSearchParams(location.search).get("activity"));if(selectedActivity&&controls.tab==="activities")controls.offset=Math.floor(activities.indexOf(selectedActivity)/50)*50;render();if(activities.length)setInspector({kind:"activity",activity:selectedActivity||activities[0]});
  else empty(inspector,"This project does not yet have an accepted scheduling register.");
 }
 async function resources(){
@@ -189,16 +190,16 @@ async function resources(){
 }
 async function siteModules(){
  const data=await json("data/resources/site-modules.json"), holder=$("moduleList"),search=$("moduleSearch"),detail=$("moduleDetail");
- const project=new URLSearchParams(location.search).get("project");
+ const params=new URLSearchParams(location.search),project=params.get("project"),activity=params.get("activity");
  function open(m){detail.replaceChildren();make(detail,"h2","",m.title);make(detail,"p","notice",m.review+" — reference only, not a work release.");
   for(const [title,rows,headers,fields] of [["Resources",m.resources,["Category","Required item","Example count","Verification"],["category","item","example","verification"]],["Readiness checklist",m.checklist,["Step","Stage","Source requirement"],["step","stage","text"]],["Reference rate links",m.rates,["Profile","Unit","Grade"],["profile","unit","grade"]]]){
    make(detail,"h3","",title);if(!rows.length){empty(detail,"Not yet recorded.");continue;}
    const table=make(make(detail,"div","table-wrap"),"table"),head=make(make(table,"thead"),"tr");for(const h of headers)make(head,"th","",h).scope="col";
    const b=make(table,"tbody");for(const r of rows){const tr=make(b,"tr");for(const f of fields)make(tr,"td","",r[f]||"—");}
   }
-  make(detail,"h3","","Linked project activities");if(!m.links.length)empty(detail,"Project activity mapping not yet verified.");for(const l of m.links){const p=make(detail,"p","");href(p,"Open "+l.activity,"../projects/activities.html?project="+encodeURIComponent(l.project));make(p,"span","muted"," · "+l.review);}
+  make(detail,"h3","","Linked project activities");if(!m.links.length)empty(detail,"Project activity mapping not yet verified.");for(const l of m.links){const p=make(detail,"p","");href(p,"Open "+l.activity,"../projects/activities.html?project="+encodeURIComponent(l.project)+"&activity="+encodeURIComponent(l.activity));make(p,"span","muted"," · "+l.review);}
  }
- function draw(){holder.replaceChildren();const q=search.value.trim().toLowerCase();const found=data.modules.filter(m=>(!project||m.links.some(l=>l.project===project))&&(m.title+" "+m.scope).toLowerCase().includes(q));$("moduleCount").textContent=found.length+" site modules";for(const m of found){const b=make(holder,"button","row-action",m.title);b.type="button";b.onclick=()=>open(m);make(holder,"p","small muted",m.scope+" · "+m.review);}if(!found.length)empty(holder,"No linked modules for this selection.");else open(found[0]);}
+ function draw(){holder.replaceChildren();const q=search.value.trim().toLowerCase();const found=data.modules.filter(m=>(!project||m.links.some(l=>l.project===project&&(!activity||l.activity===activity)))&&(m.title+" "+m.scope).toLowerCase().includes(q));$("moduleCount").textContent=found.length+" site modules";for(const m of found){const b=make(holder,"button","row-action",m.title);b.type="button";b.onclick=()=>open(m);make(holder,"p","small muted",m.scope+" · "+m.review);}if(!found.length)empty(holder,"No linked modules for this selection.");else open(found[0]);}
  search.oninput=draw;draw();
 }
 try{if(document.body.dataset.page==="home")await homepage();else if(document.body.dataset.page==="projects")await directory();else if(document.body.dataset.page==="project")await workspace();else if(document.body.dataset.page==="resources")await resources();else if(document.body.dataset.page==="modules")await siteModules();}
