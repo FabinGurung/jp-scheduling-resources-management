@@ -46,14 +46,16 @@ async function workspace(){
   href(footer,"Previous project page","../../projects/"+model.company_key+"/"+model.slug+"/");
  }
  document.title=model.title+" — Skyforge";
- const controls={tab:"activities",wbs:"",search:"",offset:0,packageStart:1,packageEnd:Math.min(15,model.activities.length),week:0,month:0};
+ const controls={tab:"activities",wbs:"",search:"",offset:0,packageStart:1,packageEnd:Math.min(15,model.activities.length),week:0,month:0,calendarScale:"comfortable",calendarWeeks:1,selectedDay:null,ganttAll:false,ganttZoom:1,showLines:true};
  const initial=document.body.dataset.view||(location.hash||"").replace("#","");
  if(["activities","gantt","calendar","milestones","packages","drawings","history"].includes(initial))controls.tab=initial;
  const inspector=$("inspector"),view=$("view"),left=$("leftStages");
+ let ganttObserver=null;
+ const revealDetails=()=>{if(matchMedia("(max-width:1130px)").matches)$("detailsPane").scrollIntoView({block:"start",behavior:"auto"});};
  const activities=model.activities||[],byId=new Map(activities.map(a=>[a.id,a]));
  function setInspector(item){inspector.replaceChildren();
   if(item.kind==="day"){make(inspector,"h3","",item.title);make(inspector,"p","muted","Planning date / week — actual attendance not verified.");
-   for(const a of item.activities){const b=make(inspector,"button","row-action",a.title);b.type="button";b.onclick=()=>setInspector({kind:"activity",activity:a});}return;}
+   if(!item.activities.length)empty(inspector,"No activities scheduled on this day.");for(const a of item.activities){const b=make(inspector,"button","row-action",a.title+(a.duration===0?" · Milestone / inspection":""));b.type="button";b.onclick=()=>setInspector({kind:"activity",activity:a});}return;}
   if(item.kind==="package"){make(inspector,"h3","",item.title);make(inspector,"p","muted",item.activities.length+" activities in this selected package.");
    make(inspector,"p","notice","A selected group is not a separately approved schedule.");
    for(const a of item.activities.slice(0,35)){const b=make(inspector,"button","row-action",a.title);b.type="button";b.onclick=()=>setInspector({kind:"activity",activity:a});}return;}
@@ -104,37 +106,95 @@ async function workspace(){
   /^\d{4}-\d{2}-\d{2}$/.test(a.start||"")?Date.parse(a.start)/86400000:null;
  const finishValue=a=>/^R\+(\d+)$/.test(a.finish||"")?Number(a.finish.slice(2)):
   /^\d{4}-\d{2}-\d{2}$/.test(a.finish||"")?Date.parse(a.finish)/86400000:null;
- function ganttView(){const found=matching();if(!found.length)return empty(view,"No Gantt data has been admitted yet.");paged(view,found,(box,arr)=>{
-  const xs=found.map(startValue).filter(x=>x!==null),ys=found.map(finishValue).filter(x=>x!==null);
-  const lo=Math.min(...xs),hi=Math.max(...ys,lo+1),span=Math.max(1,hi-lo);
-  for(const a of arr){const row=make(box,"div","gantt-row");const label=make(row,"button","row-action",a.title);label.type="button";label.onclick=()=>setInspector({kind:"activity",activity:a});
-   const track=make(row,"div","gantt-track");const b=make(track,"span","gantt-bar");
-   const st=startValue(a),en=finishValue(a);if(st===null||en===null){b.style.display="none";continue;}
-   b.style.left=(100*(st-lo)/span)+"%";b.style.width=Math.max(1,100*(en-st)/span)+"%";}
- });}
- function calendarView(){if(model.calendar?.length){const summary=make(view,"p","notice",model.calendar.filter(d=>d.working==="No").map(d=>d.day).join(", ")+" non-working; "+(model.calendar.find(d=>d.working==="Yes")?.hours??"Unspecified")+" hours per working day. Reference policy; no approved calendar or attendance implied.");}if(!activities.length)return empty(view,"No project calendar can be displayed until activities are available.");
-  const relative=activities.some(a=>/^R\+\d+$/.test(a.start||""));
+ function ganttView(){
+  const found=matching(), dated=found.filter(a=>startValue(a)!==null&&finishValue(a)!==null);
+  if(!found.length)return empty(view,"No Gantt data has been admitted yet.");
+  if(!dated.length)return empty(view,"No dated activity bars are available.");
   const bar=make(view,"div","toolbar");
-  if(relative){const lbl=make(bar,"label","","Relative week ");const input=make(lbl,"input");input.type="number";input.min="1";input.value=controls.week+1;input.style.width="90px";
-   input.onchange=()=>{controls.week=Math.max(0,Number(input.value||1)-1);render();};
-   const days=make(view,"div","calendar-days");
-   for(let i=0;i<7;i++){const num=controls.week*7+i;
-    const hits=activities.filter(a=>{const s=startValue(a),e=finishValue(a);return s!==null&&e!==null&&s<=num&&e>=num;});
-    const b=make(days,"button","", "Day "+num);make(b,"small","",hits.length+" scheduled");b.type="button";
-    b.onclick=()=>setInspector({kind:"day",title:"Relative day "+num,activities:hits});}
+  const all=make(bar,"button","",controls.ganttAll?"Show 50 activities":"Show all activities");all.type="button";all.onclick=()=>{controls.ganttAll=!controls.ganttAll;controls.offset=0;render();};
+  const dep=make(bar,"button","",controls.showLines?"Hide dependency lines":"Show dependency lines");dep.type="button";dep.setAttribute("aria-pressed",String(controls.showLines));dep.onclick=()=>{controls.showLines=!controls.showLines;render();};
+  for(const [label,z] of [["Zoom out",.5],["Fit timeline",1],["Zoom in",2]]){const b=make(bar,"button","",label);b.type="button";b.setAttribute("aria-pressed",String(controls.ganttZoom===z));b.onclick=()=>{controls.ganttZoom=z;render();};}
+  const lo=Math.min(...dated.map(startValue)),hi=Math.max(lo+1,...dated.map(finishValue)),span=hi-lo;
+  const draw=(parent,arr)=>{
+   const visible=new Set(arr.map(a=>a.id));
+   const relations=(model.relationships||[]).filter(r=>visible.has(r.from)&&visible.has(r.to));
+   const beyond=(model.relationships||[]).filter(r=>visible.has(r.from)!==visible.has(r.to)).length;
+   make(parent,"p","small muted",relations.length+" dependency lines in view; "+beyond+" relationships extend outside this selection. FS = finish to start; SS = start to start; FF = finish to finish; SF = start to finish. Use Show all activities or clear filters to see more.");
+   const scroller=make(parent,"div","gantt-scroll"),chart=make(scroller,"div","gantt-chart");chart.style.minWidth=Math.max(480,Math.round(760*controls.ganttZoom))+"px";
+   const scale=make(chart,"div","gantt-row gantt-scale"),left=make(scale,"strong","","Activity");
+   const tick=make(scale,"div","gantt-ticks");
+   const relative=dated.some(a=>/^R\+/.test(a.start));
+   for(let i=0;i<=4;i++){const val=Math.round(lo+span*i/4);make(tick,"span","",relative?"R+"+val:new Date(val*86400000).toISOString().slice(0,10));}
+   const tracks=new Map();
+   for(const a of arr){const row=make(chart,"div","gantt-row");const label=make(row,"button","row-action",a.title);label.type="button";label.onclick=()=>{setInspector({kind:"activity",activity:a});revealDetails();};
+    const track=make(row,"div","gantt-track"),b=make(track,"span","gantt-bar");
+    const st=startValue(a),en=finishValue(a);
+    if(st===null||en===null){b.style.display="none";continue;}
+    b.style.left=(100*(st-lo)/span)+"%";b.style.width=Math.max(.3,100*(en-st)/span)+"%";
+    if(a.duration===0)b.classList.add("gantt-milestone");
+    b.title=a.title+" — "+shortDate(a.start)+" to "+shortDate(a.finish);
+    tracks.set(a.id,{track,st,en});
+   }
+   if(!controls.showLines)return;
+   const ns="http://www.w3.org/2000/svg",svg=document.createElementNS(ns,"svg");
+   svg.classList.add("gantt-dependencies");svg.setAttribute("aria-label","Dependency arrows from imported relationships");chart.append(svg);
+   const sn=(tag,attrs={},parent=svg)=>{const n=document.createElementNS(ns,tag);for(const [k,v] of Object.entries(attrs))n.setAttribute(k,String(v));parent.append(n);return n;};
+   const redraw=()=>{
+    if(!chart.isConnected)return;
+    const box=chart.getBoundingClientRect();if(!box.width||!box.height)return;
+    svg.replaceChildren();svg.setAttribute("viewBox","0 0 "+box.width+" "+box.height);
+    const defs=sn("defs"),colors={FS:"#225d83",SS:"#26734e",FF:"#8557a1",SF:"#b66a28"};
+    for(const [type,color] of Object.entries(colors)){const marker=sn("marker",{id:"dep-arrow-"+type,markerWidth:6,markerHeight:6,refX:5,refY:3,orient:"auto",markerUnits:"userSpaceOnUse"},defs);sn("path",{d:"M0 0 L6 3 L0 6 Z",fill:color},marker);}
+    let i=0;
+    for(const r of relations){const a=tracks.get(r.from),b=tracks.get(r.to),type=String(r.type||"").toUpperCase();if(!a||!b||!colors[type])continue;
+     const ar=a.track.getBoundingClientRect(),br=b.track.getBoundingClientRect();
+     const x1=ar.left-box.left+ar.width*((type[0]==="S"?a.st:a.en)-lo)/span,x2=br.left-box.left+br.width*((type[1]==="S"?b.st:b.en)-lo)/span;
+     const y1=ar.top-box.top+ar.height/2,y2=br.top-box.top+br.height/2;
+     const elbow=x1+Math.max(5,Math.min(22,Math.abs(x2-x1)/3))+(i++%4)*2;
+     const line=sn("path",{d:"M"+x1+" "+y1+" H"+elbow+" V"+y2+" H"+x2,fill:"none",stroke:colors[type],"stroke-width":1.25,"stroke-opacity":.72,"marker-end":"url(#dep-arrow-"+type+")",class:"dependency-line","data-type":type,"data-from":r.from,"data-to":r.to});
+     sn("title",{},line).textContent=(byId.get(r.from)?.title||r.from)+" → "+(byId.get(r.to)?.title||r.to)+" ("+type+(r.lag?" "+r.lag:"")+")";
+    }
+   };
+   redraw();ganttObserver=new ResizeObserver(redraw);ganttObserver.observe(chart);
+  };
+  if(controls.ganttAll)draw(view,found);else paged(view,found,draw);
+ }
+ function calendarView(){
+  if(model.calendar?.length)make(view,"p","notice",model.calendar.filter(d=>d.working==="No").map(d=>d.day).join(", ")+" non-working; "+(model.calendar.find(d=>d.working==="Yes")?.hours??"Unspecified")+" hours per working day. Reference policy; actual attendance not verified.");
+  if(!activities.length)return empty(view,"No project calendar can be displayed until activities are available.");
+  const relative=activities.some(a=>/^R\+\d+$/.test(a.start||"")),bar=make(view,"div","toolbar");
+  const mode=make(bar,"button","",controls.calendarScale==="compact"?"Comfortable size":"Compact / zoom out");mode.type="button";mode.onclick=()=>{controls.calendarScale=controls.calendarScale==="compact"?"comfortable":"compact";render();};
+  const legend=make(view,"div","calendar-legend");for(const [klass,label] of [["cal-empty","No work"],["cal-work","Planned activity"],["cal-busy","Multiple activities"],["cal-milestone","Milestone / inspection"],["cal-rest","Non-working day"]]){const item=make(legend,"span",klass,label);}
+  const found=matching();
+  const days=make(view,"div","calendar-days "+(controls.calendarScale==="compact"?"calendar-compact":""));
+  const hit=value=>found.filter(a=>{const s=startValue(a),e=finishValue(a);return s!==null&&e!==null&&(s===e?s===value:s<=value&&value<e);});
+  function dayCell(label,title,value,rest=false){
+   const hits=hit(value),milestones=hits.some(a=>a.duration===0),klass=milestones?"cal-milestone":hits.length>1?"cal-busy":hits.length?"cal-work":"cal-empty";
+   const b=make(days,"button",klass+(rest?" cal-rest":""),label);b.type="button";b.setAttribute("aria-pressed",String(controls.selectedDay===title));b.setAttribute("aria-label",title+", "+hits.length+" scheduled activities"+(milestones?", milestone or inspection":"")+(rest?", non-working reference day":""));
+   make(b,"small","",hits.length+" scheduled"+(milestones?" · ◆":""));if(rest)make(b,"small","rest-label","Rest day");
+   if(controls.calendarScale!=="compact"&&hits.length)make(b,"small","calendar-preview",hits[0].title);
+   b.onclick=()=>{controls.selectedDay=title;for(const c of days.querySelectorAll("button"))c.setAttribute("aria-pressed",String(c===b));setInspector({kind:"day",title,activities:hits});revealDetails();};
+   return b;
+  }
+  if(relative){
+   const prev=make(bar,"button","","← Previous");prev.type="button";prev.onclick=()=>{controls.week=Math.max(0,controls.week-controls.calendarWeeks);render();};
+   const lbl=make(bar,"label","","Relative week "),input=make(lbl,"input");input.type="number";input.min="1";input.value=controls.week+1;input.style.width="80px";input.onchange=()=>{controls.week=Math.max(0,Math.floor(Number(input.value||1))-1);render();};
+   const span=make(bar,"button","",controls.calendarWeeks===1?"Show 4 weeks":"Show 1 week");span.type="button";span.onclick=()=>{controls.calendarWeeks=controls.calendarWeeks===1?4:1;render();};
+   const next=make(bar,"button","","Next →");next.type="button";next.onclick=()=>{controls.week+=controls.calendarWeeks;render();};
+   for(let i=0;i<controls.calendarWeeks*7;i++){const n=controls.week*7+i;dayCell("Day "+n,"Relative day "+n,n);}
+   make(view,"p","small muted","Relative days have no verified civil-date anchor; weekday holidays are not assigned to them.");
   }else{
    const dates=activities.map(a=>a.start).filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x||"")).sort();
    if(!dates.length)return empty(view,"No dated source calendar is available yet.");
-   const initial=dates[0].slice(0,7);const [year,month]=initial.split("-").map(Number);
-   const d=new Date(Date.UTC(year,month-1+controls.month,1));const current=d.toISOString().slice(0,7);
+   const [year,month]=dates[0].slice(0,7).split("-").map(Number),d=new Date(Date.UTC(year,month-1+controls.month,1)),current=d.toISOString().slice(0,7);
    const prev=make(bar,"button","","← Previous month");prev.type="button";prev.onclick=()=>{controls.month--;render();};
    make(bar,"strong","",new Intl.DateTimeFormat("en",{month:"long",year:"numeric",timeZone:"UTC"}).format(d));
    const next=make(bar,"button","","Next month →");next.type="button";next.onclick=()=>{controls.month++;render();};
-   const days=make(view,"div","calendar-days");const count=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();
-   for(let i=1;i<=count;i++){const date=current+"-"+String(i).padStart(2,"0");
-    const hits=activities.filter(a=>(a.start||"")<=date&&(a.finish||"")>=date);
-    const b=make(days,"button","",String(i));make(b,"small","",hits.length+" scheduled");b.type="button";
-    b.onclick=()=>setInspector({kind:"day",title:date,activities:hits});}
+   const names=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+   for(const name of names)make(days,"span","calendar-weekday",name.slice(0,3));
+   for(let i=0;i<d.getUTCDay();i++)make(days,"span","calendar-blank","");
+   const count=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate(),rests=new Set((model.calendar||[]).filter(x=>x.working==="No").map(x=>x.day));
+   for(let i=1;i<=count;i++){const date=current+"-"+String(i).padStart(2,"0"),day=new Date(date+"T00:00:00Z");dayCell(String(i),date,day.getTime()/86400000,rests.has(names[day.getUTCDay()]));}
   }
  }
  function packageView(){href(view,"Open individual site modules","../resources/modules.html?project="+encodeURIComponent(model.id));if(!activities.length)return empty(view,"Work packages will appear once activities are available.");
@@ -152,11 +212,10 @@ async function workspace(){
   show.onclick=draw;draw();
   if(model.packages?.length){make(view,"h3","","Recorded work packages");for(const p of model.packages){const b=make(view,"button","row-action",p.name);b.type="button";b.onclick=()=>setInspector({kind:"package",title:p.name,activities:p.membership.map(x=>byId.get(x)).filter(Boolean)});}}
  }
- function drawingView(){const entries=model.drawings||[];if(!entries.length){empty(view,"No drawing-to-activity links have passed source review for this project.");const p=make(view,"p","muted","The drawing repository retains authoritative working drawings and their revision history.");href(view,"Open drawing library","https://fabingurung.github.io/jp-drawing-coordination/");return;}
-  for(const d of entries){const b=make(view,"button","row-action",d.drawing+" · Revision "+d.revision);b.type="button";b.onclick=()=>setInspector({kind:"drawing",title:d.drawing});}}
+ function drawingView(){const entries=model.drawings||[];make(view,"h3","","Drawing packages");make(view,"p","muted","The drawing repository retains authoritative working drawings and their revision history. Restricted sources remain in the signed-in Google Drive directory.");href(view,"Open drawing library","https://fabingurung.github.io/jp-drawing-coordination/");if(model.id==="PORT-000001"){make(view,"p");href(view,"Ground-floor beam and slab drawing packages (R02)","https://fabingurung.github.io/jp-drawing-coordination/projects/narayani-parajuli/gf-beam-slab/");make(view,"p","notice","R02 is a site coordination draft, not an engineering release.");}if(!entries.length)return empty(view,"No drawing-to-activity links have passed source review for this project.");for(const d of entries){const b=make(view,"button","row-action",d.drawing+" · Revision "+d.revision+(d.activity?" · "+d.activity:""));b.type="button";b.onclick=()=>{setInspector({kind:"drawing",title:d.drawing});if(d.activity&&byId.has(d.activity))href(inspector,"Open linked activity","activities.html?project="+encodeURIComponent(model.id)+"&activity="+encodeURIComponent(d.activity));revealDetails();};}}
  function milestoneView(){const milestones=activities.filter(a=>a.duration===0);make(view,"p","notice","Zero-duration milestones and inspection gates from the planning source; not actual completion.");if(!milestones.length)return empty(view,"No recorded milestones.");makeRowList(view,milestones);}
  function historyView(){make(view,"h3","","Previous planning editions");make(view,"p","muted","Previous versions are retained for source comparison and review.");if(/^(fishtail|rohini|jp|paila)$/.test(model.company_key)&&/^[a-z0-9-]+$/.test(model.slug))href(view,"Open previous project page","../../projects/"+model.company_key+"/"+model.slug+"/");if(model.id==="PORT-000001"){make(view,"p");href(view,"Narayani v002 schedule","../../projects/narayani/schedule-v002.html");}if(model.id==="PORT-000014"){make(view,"p");href(view,"Harisharan v002 schedule","../../projects/fishtail/harisharan-residence/schedule-v002.html");make(view,"p");href(view,"Harisharan v003 measured BOQ reference","../../projects/fishtail/harisharan-residence/boq-v003.html");}}
- function render(){view.replaceChildren();for(const b of document.querySelectorAll(".tabs button"))b.setAttribute("aria-selected",b.dataset.view===controls.tab?"true":"false");
+ function render(){if(ganttObserver){ganttObserver.disconnect();ganttObserver=null;}view.replaceChildren();for(const b of document.querySelectorAll(".tabs button"))b.setAttribute("aria-selected",b.dataset.view===controls.tab?"true":"false");
   if(controls.tab==="activities")activityView();else if(controls.tab==="gantt")ganttView();else if(controls.tab==="calendar")calendarView();else if(controls.tab==="milestones")milestoneView();else if(controls.tab==="packages")packageView();else if(controls.tab==="history")historyView();else drawingView();}
  for(const tab of document.querySelectorAll(".tabs button"))tab.onclick=()=>{location.assign(tab.dataset.view+".html?project="+encodeURIComponent(model.id));};
  stageList();const selectedActivity=byId.get(new URLSearchParams(location.search).get("activity"));if(selectedActivity&&controls.tab==="activities")controls.offset=Math.floor(activities.indexOf(selectedActivity)/50)*50;render();if(activities.length)setInspector({kind:"activity",activity:selectedActivity||activities[0]});

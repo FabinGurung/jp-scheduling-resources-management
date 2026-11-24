@@ -25,7 +25,7 @@ await new Promise(done => server.listen(0, '127.0.0.1', done));
 const root = production ?? 'http://127.0.0.1:' + server.address().port + '/schedules/';
 const browser = await chromium.launch({args: ['--no-sandbox']});
 try {
-  for (const width of [1440, 390]) {
+  for (const width of [1440, 1024, 768, 390]) {
     const page = await browser.newPage({viewport: {width, height: 900}, isMobile: width < 500, hasTouch: width < 500});
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -42,13 +42,28 @@ try {
     await page.waitForURL(/gantt\.html\?project=PORT-000001/);
     await page.locator('.gantt-bar').first().waitFor();
     assert.equal(await page.locator('.gantt-bar').count(), 50);
+    assert.ok(await page.locator('.dependency-line').count()>0,"Missing dependency arrows");
+    assert.ok(await page.locator('.dependency-line').evaluateAll(lines=>lines.every(l=>/^(FS|SS|FF|SF)$/.test(l.dataset.type)&&l.dataset.from&&l.dataset.to)));
+    await page.getByRole('button',{name:'Hide dependency lines'}).click();
+    assert.equal(await page.locator('.dependency-line').count(),0);
+    await page.getByRole('button',{name:'Show dependency lines'}).click();
+    await page.locator('.dependency-line').first().waitFor({state:'attached'});
     await page.getByRole('tab', {name: 'Calendar'}).click();
     await page.waitForURL(/calendar\.html/);
     await page.locator('.calendar-days button').first().waitFor();
     assert.equal(await page.locator('.calendar-days button').count(), 7);
+    await page.getByRole('button',{name:'Compact / zoom out'}).click();
+    assert.ok(await page.locator('.calendar-compact').count());
+    await page.getByRole('button',{name:'Show 4 weeks'}).click();
+    assert.equal(await page.locator('.calendar-days button').count(),28);
+    await page.locator('.calendar-days button').first().click();
+    assert.equal(await page.locator('.calendar-days button[aria-pressed=true]').count(),1);
+    await page.locator('#inspector h3').getByText('Relative day 0').waitFor();
+    if(width<=1130)assert.ok(await page.evaluate(()=>document.querySelector('#detailsPane').getBoundingClientRect().top>=document.querySelector('.centre').getBoundingClientRect().bottom-2),'Selected details must sit below main view');
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'Calendar page has horizontal overflow');
     await page.getByRole('tab', {name: 'Work packages'}).click();
     await page.getByRole('button', {name: 'Show package'}).waitFor();
-    await page.getByRole('tab', {name: 'Drawings'}).click();
+    await page.getByRole('tab', {name: 'Drawing packages'}).click();
     await page.waitForURL(/drawings\.html/);
     await page.getByRole('link', {name: 'Open drawing library'}).waitFor();
     await page.goto(root + 'projects/activities.html?project=PORT-000014');
