@@ -13,7 +13,7 @@ const server = createServer(async (req, res) => {
     const route = path.replace(/^\/schedules\//, '');
     if (route.startsWith('/') || route.split('/').includes('..')) throw Error('Invalid preview route');
     const name = resolve('dist-v2', route + (path.endsWith('/') ? 'index.html' : ''));
-    const mime = {'.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json'};
+    const mime = {'.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json'};
     res.setHeader('Content-Type', mime[extname(name)] ?? 'application/octet-stream');
     res.end(await readFile(name));
   } catch {
@@ -29,8 +29,14 @@ try {
     const page = await browser.newPage({viewport: {width, height: 900}, isMobile: width < 500, hasTouch: width < 500});
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
+    page.on("console",msg=>{if(msg.type()==="error")console.log("Browser console:",msg.text())});
     const directory = await page.goto(root + 'projects/index.html', {waitUntil: 'domcontentloaded'});
     assert.equal(directory.status(), 200);
+    await page.locator("skyforge-foreman").waitFor();
+    assert.equal(await page.locator("skyforge-foreman").count(),1);
+    await page.getByRole('button',{name:'Hide Foreman'}).click();
+    await page.getByRole('button',{name:'Show Foreman'}).waitFor();
+    await page.getByRole('button',{name:'Show Foreman'}).click();
     await page.getByText('22 projects found').waitFor();
     await page.locator('#search').fill('Narayani');
     assert.equal(await page.locator('.project-card').count(), 1);
@@ -83,6 +89,11 @@ try {
     await page.getByRole('heading',{name:'Readiness checklist'}).waitFor();
     await page.locator('#moduleSearch').fill('slab');
     assert.ok(await page.locator('#moduleList button').count()>=1);
+    await page.goto(root + 'resources/sources.html');
+    await page.getByText('48 automatically read files',{exact:false}).waitFor();
+    await page.locator('#sourceSearch').fill('Narayani');
+    assert.equal(await page.locator('#sourceList tbody tr').count(),2);
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2));
     assert.deepEqual(errors, []);
     await page.close();
     console.log(width + 'px: 22 projects, public Doc notes, all five views, empty source state and rate/norm search pass');

@@ -53,6 +53,11 @@ if(verifyMigration){
 for(const file of ["index.html","projects/index.html","projects/view.html","resources/index.html","assets/styles.css","assets/app.js"]){
  await stat(join(dir,file));
 }
+const sourceText=await readFile(join(data,"source-register.json"),"utf8");
+assert.ok(!privateSourcePattern.test(sourceText),"Private locator in source register");
+const sourceRegister=JSON.parse(sourceText);assert.equal(sourceRegister.inputs.length,48);assert.equal(sourceRegister.inputs.filter(x=>x.kind==="Doc").length,22);assert.equal(sourceRegister.inputs.filter(x=>x.kind==="Sheet").length,26);
+for(const p of index.projects){assert.equal(sourceRegister.inputs.filter(x=>x.project===p.title&&x.company===p.company).length,2);}
+await stat(join(dir,"resources","sources.html"));await stat(join(dir,"assets","skyforge-foreman.mjs"));
 const core=await Promise.all(["index.html","projects/index.html","projects/view.html","resources/index.html"].map(f=>readFile(join(dir,f),"utf8")));
 for(const [i,html] of core.entries()){
  assert.match(html,/Skyforge|SKYFORGE/);
