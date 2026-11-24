@@ -40,6 +40,11 @@ async function workspace(){
   for(const paragraph of model.public_narrative)make(notes,"p","",paragraph);
   $("stage").after(notes);
  }
+ // Historical routes remain available during the source migration.
+ const footer=document.querySelector("main footer");
+ if(footer&&/^(fishtail|rohini|jp|paila)$/.test(model.company_key)&&/^[a-z0-9-]+$/.test(model.slug)){
+  href(footer,"Previous project page","../../projects/"+model.company_key+"/"+model.slug+"/");
+ }
  document.title=model.title+" — Skyforge";
  const controls={tab:"activities",wbs:"",search:"",offset:0,packageStart:1,packageEnd:Math.min(15,model.activities.length),week:0,month:0};
  const initial=(location.hash||"").replace("#","");
