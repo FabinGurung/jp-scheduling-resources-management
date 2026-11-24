@@ -24,7 +24,6 @@ on:
 permissions:
   contents: read
   id-token: write
-  pages: write
 
 concurrency:
   group: jp-scheduling-production-pages
@@ -172,6 +171,21 @@ jobs:
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
+          name: github-pages
           path: dist
+  deploy:
+    needs: reference-sync-and-publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Publish validated Docs- and Sheets-backed Skyforge
+        id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages
