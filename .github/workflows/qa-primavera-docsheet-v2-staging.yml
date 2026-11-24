@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: 455b3ab29155275ed293db7c277bfc09a46e2e0c
+          ref: 0062294b074aebd797f2060872fd171b4cdd3ab6
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
