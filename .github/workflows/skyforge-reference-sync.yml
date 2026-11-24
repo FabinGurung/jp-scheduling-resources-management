@@ -1,10 +1,4 @@
-# Skyforge 2026-11-17 four-view update (packages 4-15,70-90; CAD public-source readback; persistent east), validated kernel 9f6917fb85bd8d6112803313ef71fbd5793da3a4. No project source data or approvals changed.
-# Skyforge compass UI milestone 2026-11-16 — validated kernel fab8cba1dcb6ca71e4c6d1a0021a397296aaabfa; no changes to source project schedules, site resources or approval status.
-# Skyforge v1.16 general scheduling source/edition template + cross-project comparison, pinned kernel 4fda4ca981b381091d345e60d03a3bd467c4fdf8.
-# Harisharan V000003 FINAL production checkpoint: validated kernel 4c9da4536a7fb5d7451bd9f177cc5756a884cc6b (path-corrected, rate/material/grade holds); Narayani v002 preserved; NO construction release.
 name: Skyforge · Authorized Sheets Reference Sync and Publish
-# Publish Narayani v002 preview from validated kernel 59f7c10db84374a3aa484b43b8fcfc52ed33426b; preserve pilot default.
-# Publication checkpoint: 2026-11-12 activity-wide materials calculator and scoped takeoff QA.
 on:
   push:
     branches: [main]
