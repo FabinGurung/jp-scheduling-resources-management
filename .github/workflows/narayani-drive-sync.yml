@@ -1,4 +1,4 @@
-name: Ops · Drive Sync (gated)
+name: Ops · Narayani field evidence preview (no deployment)
 on:
   workflow_call:
     secrets:
@@ -13,11 +13,10 @@ on:
 permissions:
   contents: read
   id-token: write
-  pages: write
 
 concurrency:
-  group: jp-scheduling-production-pages
-  cancel-in-progress: true
+  group: narayani-field-evidence-preview
+  cancel-in-progress: false
 
 jobs:
   authenticated-refresh:
@@ -92,8 +91,10 @@ jobs:
           test ! -e dist/machine/project-mappings/narayani-progress-public-v0.1.json
           test ! -e dist/machine/source-snapshots/wbs_schedule_sample/schedule_seed.json
           node -e 'const fs=require("fs");const p=JSON.parse(fs.readFileSync("dist/projects/narayani/progress.json"));if(!p.auto_refresh_enabled||p.completed_wbs_activities!==0||p.verified_milestones!==0||p.source_evidence_is_site_approval!==false)process.exit(1)'
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - name: Preserve validated field-evidence preview only
+        uses: actions/upload-artifact@v4
         with:
+          name: narayani-field-evidence-preview
           path: dist
-      - uses: actions/deploy-pages@v4
+          retention-days: 7
+          if-no-files-found: error
