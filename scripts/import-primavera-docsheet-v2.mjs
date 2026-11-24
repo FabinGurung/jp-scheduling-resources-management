@@ -139,7 +139,7 @@ for(let i=0;i<list.length;i+=4){
 if(projects.length!==22)throw Error("Incomplete project projection");
 
 const moduleText=x=>{
- const s=String(x??"").replace(/(\d)\s*@\s*(\d)/g,"$1 at $2");
+ const s=String(x??"").replace(/(\d(?:\s*mm)?)\s*@\s*(\d)/gi,"$1 at $2");
  if(/https?:\/\//i.test(s))throw Error("URL in public module field");
  return asText(s);
 };
