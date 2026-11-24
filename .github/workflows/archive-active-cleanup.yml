@@ -1,0 +1,76 @@
+name: Archive audit · scheduling active-file cleanup
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/archive-active-cleanup.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  snapshot-and-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 8c0633785ab33b77157813658369a985a3c78d04
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Preserve exact pre-cleanup tree snapshots
+        run: |
+          mkdir -p "$RUNNER_TEMP/archive"
+          git archive --format=zip --output="$RUNNER_TEMP/archive/kernel-PRE-8c063378.zip" 8c0633785ab33b77157813658369a985a3c78d04
+          git archive --format=zip --output="$RUNNER_TEMP/archive/main-PRE-d5a1f278.zip" d5a1f2781b90e1d2666edfad76b5a680ce031820
+          git ls-tree -r 8c0633785ab33b77157813658369a985a3c78d04 > "$RUNNER_TEMP/archive/kernel-tree.txt"
+          git ls-tree -r d5a1f2781b90e1d2666edfad76b5a680ce031820 > "$RUNNER_TEMP/archive/main-tree.txt"
+      - name: Audit unreferenced history and map files
+        run: |
+          python3 - <<'PY'
+          import os, pathlib, subprocess, json
+          root=pathlib.Path.cwd()
+          output=pathlib.Path(os.environ["RUNNER_TEMP"])/"archive"
+          files=subprocess.check_output(["git","ls-files","-z"]).decode().strip("\0").split("\0")
+          candidates=[f for f in files if f.startswith("pokhara_project_map_") or f.startswith(("docs/archive/","docs/audit/","docs/design/","docs/milestones/","docs/research/"))]
+          keep=[f for f in files if f not in candidates and f!="README.md"]
+          texts={f:pathlib.Path(f).read_bytes() for f in keep}
+          # Fixed point: keep any candidate referenced by retained code, workflow, tests, or source documents.
+          remaining=set(candidates)
+          while True:
+              referenced={f for f in remaining if any(f.encode() in t or pathlib.Path(f).name.encode() in t for t in texts.values())}
+              if not referenced: break
+              for f in referenced: texts[f]=pathlib.Path(f).read_bytes()
+              remaining-=referenced
+          mainfiles=subprocess.check_output(["git","ls-tree","-r","--name-only","d5a1f2781b90e1d2666edfad76b5a680ce031820"]).decode().splitlines()
+          maintexts={f:subprocess.check_output(["git","show","d5a1f2781b90e1d2666edfad76b5a680ce031820:"+f]) for f in mainfiles if not f.startswith("pokhara_project_map_")}
+          mainremove=[f for f in mainfiles if f.startswith("pokhara_project_map_") and not any(f.encode() in t for t in maintexts.values())]
+          # No removal of paths consumed by the canonical engine or reference checks.
+          report={"kernel_remove":sorted(remaining),"main_remove":sorted(mainremove),"kernel_retained_candidates":sorted(set(candidates)-remaining),"kernel_candidate_bytes":sum(pathlib.Path(f).stat().st_size for f in remaining),"kernel_readme_bytes":pathlib.Path("README.md").stat().st_size}
+          (output/"cleanup-candidates.json").write_text(json.dumps(report,indent=2)+"\n")
+          print("CLEANUP_CANDIDATES "+json.dumps(report))
+          for f in remaining: pathlib.Path(f).unlink()
+          PY
+      - name: Verify remaining engine and publication dependencies
+        run: |
+          npm test
+          npm run verify:calendar
+          for target in machine wbs pilot progress visual generic; do
+            npm run "$target:build"
+            npm run "$target:verify"
+          done
+          npm run site:build
+      - name: Record archive checksums
+        if: always()
+        run: |
+          cd "$RUNNER_TEMP/archive"
+          sha256sum *.zip *.txt *.json > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: scheduling-pre-cleanup-archive
+          path: ${{ runner.temp }}/archive
+          if-no-files-found: error
+          retention-days: 30
