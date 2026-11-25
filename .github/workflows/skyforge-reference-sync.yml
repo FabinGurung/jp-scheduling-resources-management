@@ -200,6 +200,9 @@ jobs:
           const mascot=await readFile('dist/schedules/assets/skyforge-foreman.mjs','utf8');
           assert.ok(mascot.includes('getPointAtLength')&&mascot.includes('calendarRoute')&&mascot.includes('pointer-events:none'),'Roaming Foreman missing');
           assert.ok((await readFile('dist/schedules/assets/app.js','utf8')).includes('calendar-count'),'Compact calendar count missing');
+          const planner=await readFile('dist/schedules/assets/app.js','utf8');
+          assert.ok(planner.includes('ganttScale')&&planner.includes('Work-stage overview')&&planner.includes('Selected relationships'),'Planner Gantt controls missing');
+          assert.ok(mascot.includes('settleTimer')&&mascot.includes('lastSegment'),'Foreman stability correction missing');
           const manifest={kernel_commit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),publisher_commit:process.env.GITHUB_SHA,workflow_run:process.env.GITHUB_RUN_ID,generated_at:new Date().toISOString(),interactive_pages:live,redirects,live_sources:r.inputs.length};
           await writeFile('dist/schedules/release.json',JSON.stringify(manifest,null,2)+'\n');
           console.log('SKYFORGE_RELEASE_MANIFEST',JSON.stringify(manifest));
