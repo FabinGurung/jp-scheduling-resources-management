@@ -171,7 +171,7 @@ async function workspace(){
   function dayCell(label,title,value,rest=false){
    const hits=hit(value),milestones=hits.some(a=>a.duration===0),klass=milestones?"cal-milestone":hits.length>1?"cal-busy":hits.length?"cal-work":"cal-empty";
    const b=make(days,"button",klass+(rest?" cal-rest":""),label);b.type="button";b.setAttribute("aria-pressed",String(controls.selectedDay===title));b.setAttribute("aria-label",title+", "+hits.length+" scheduled activities"+(milestones?", milestone or inspection":"")+(rest?", non-working reference day":""));
-   make(b,"small","",hits.length+" scheduled"+(milestones?" · ◆":""));if(rest)make(b,"small","rest-label","Rest day");
+   const today=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kathmandu",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date()).reduce((o,p)=>(o[p.type]=p.value,o),{});if(/^\d{4}-\d{2}-\d{2}$/.test(title)&&title===today.year+"-"+today.month+"-"+today.day){b.setAttribute("aria-current","date");b.classList.add("cal-today");}make(b,"small","calendar-count",hits.length+(milestones?" · ◆":""));if(rest)make(b,"small","rest-label","Rest");
    if(controls.calendarScale!=="compact"&&hits.length)make(b,"small","calendar-preview",hits[0].title);
    b.onclick=()=>{controls.selectedDay=title;for(const c of days.querySelectorAll("button"))c.setAttribute("aria-pressed",String(c===b));setInspector({kind:"day",title,activities:hits});revealDetails();};
    return b;

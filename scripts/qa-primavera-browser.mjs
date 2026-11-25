@@ -54,6 +54,9 @@ try {
     assert.equal(await page.locator('.dependency-line').count(),0);
     await page.getByRole('button',{name:'Show dependency lines'}).click();
     await page.locator('.dependency-line').first().waitFor({state:'attached'});
+    await page.locator(".gantt-scroll").scrollIntoViewIfNeeded();
+    await page.waitForFunction(()=>document.querySelector("skyforge-foreman")?.dataset.mode==="gantt");
+    assert.equal(await page.locator("skyforge-foreman").evaluate(el=>getComputedStyle(el).pointerEvents),"none");
     await page.getByRole('tab', {name: 'Calendar'}).click();
     await page.waitForURL(/calendar\.html/);
     await page.locator('.calendar-days button').first().waitFor();
@@ -62,6 +65,9 @@ try {
     assert.ok(await page.locator('.calendar-compact').count());
     await page.getByRole('button',{name:'Show 4 weeks'}).click();
     assert.equal(await page.locator('.calendar-days button').count(),28);
+    await page.locator('.calendar-days button').first().scrollIntoViewIfNeeded();
+    await page.waitForFunction(()=>document.querySelector("skyforge-foreman")?.dataset.mode==="calendar");
+    assert.ok(await page.locator(".calendar-count").evaluateAll(nodes=>nodes.every(e=>!e.textContent.includes("scheduled"))));
     await page.locator('.calendar-days button').first().click();
     assert.equal(await page.locator('.calendar-days button[aria-pressed=true]').count(),1);
     await page.locator('#inspector h3').getByText('Relative day 0').waitFor();
@@ -91,6 +97,8 @@ try {
     assert.ok(await page.locator('#moduleList button').count()>=1);
     await page.goto(root + 'resources/sources.html');
     await page.getByText('48 automatically read files',{exact:false}).waitFor();
+    assert.match(await page.getByRole('link',{name:'Exact project Doc, Sheet & folder links'}).getAttribute('href'),/#gid=102$/);
+    assert.match(await page.getByRole('link',{name:'Open synchronized Drive'}).getAttribute('href'),/drive\.google\.com\/drive\/folders\//);
     await page.locator('#sourceSearch').fill('Narayani');
     assert.equal(await page.locator('#sourceList tbody tr').count(),2);
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2));
