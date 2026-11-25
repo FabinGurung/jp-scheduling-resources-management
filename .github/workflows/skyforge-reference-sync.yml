@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - .github/workflows/skyforge-reference-sync.yml
+      - .github/source-gallery/**
   workflow_dispatch:
   schedule:
     - cron: '23 * * * *'
@@ -165,7 +166,8 @@ jobs:
       - name: Verify Foreman and source directory in the final combined Pages artifact
         run: |
           node --input-type=module <<'NODE'
-          import {readFile,readdir,stat} from 'node:fs/promises';
+          import {readFile,readdir,stat,writeFile} from 'node:fs/promises';
+          import {execFileSync} from 'node:child_process';
           import {join} from 'node:path';
           import assert from 'node:assert/strict';
           let live=0,redirects=0;
@@ -190,6 +192,17 @@ jobs:
           assert.equal(r.inputs.length,48);
           assert.equal(r.inputs.filter(x=>x.kind==='Doc').length,22);
           assert.equal(r.inputs.filter(x=>x.kind==='Sheet').length,26);
+          const sourcePage=await readFile('dist/schedules/resources/sources.html','utf8');
+          const gallery=await readFile('gallery-release/.github/source-gallery/source-gallery.js','utf8');
+          for(const target of ['https://drive.google.com/drive/folders/1HGw_OKAQobPCv2JW0j23eUqjBwlsJdpt','https://docs.google.com/spreadsheets/d/1ONVr7nEC4noswyH9bBuXI9GEVW5r6RcaDyo-Z3z2uy4/edit#gid=102','https://docs.google.com/spreadsheets/d/1ONVr7nEC4noswyH9bBuXI9GEVW5r6RcaDyo-Z3z2uy4/edit#gid=103']){
+            assert.ok(sourcePage.includes(target)&&gallery.includes(target),'Missing approved navigation entry point');
+          }
+          const mascot=await readFile('dist/schedules/assets/skyforge-foreman.mjs','utf8');
+          assert.ok(mascot.includes('getPointAtLength')&&mascot.includes('calendarRoute')&&mascot.includes('pointer-events:none'),'Roaming Foreman missing');
+          assert.ok((await readFile('dist/schedules/assets/app.js','utf8')).includes('calendar-count'),'Compact calendar count missing');
+          const manifest={kernel_commit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),publisher_commit:process.env.GITHUB_SHA,workflow_run:process.env.GITHUB_RUN_ID,generated_at:new Date().toISOString(),interactive_pages:live,redirects,live_sources:r.inputs.length};
+          await writeFile('dist/schedules/release.json',JSON.stringify(manifest,null,2)+'\n');
+          console.log('SKYFORGE_RELEASE_MANIFEST',JSON.stringify(manifest));
           console.log('SKYFORGE_FOREMAN_RELEASE_PASS',JSON.stringify({interactive_pages:live,redirects,live_sources:r.inputs.length}));
           NODE
       - uses: actions/configure-pages@v5
