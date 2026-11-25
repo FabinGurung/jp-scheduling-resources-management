@@ -114,7 +114,7 @@ async function workspace(){
   const all=make(bar,"button","",controls.ganttAll?"Show 50 activities":"Show all activities");all.type="button";all.onclick=()=>{controls.ganttAll=!controls.ganttAll;controls.offset=0;render();};
   const dep=make(bar,"button","",controls.showLines?"Hide dependency lines":"Show dependency lines");dep.type="button";dep.setAttribute("aria-pressed",String(controls.showLines));dep.onclick=()=>{controls.showLines=!controls.showLines;render();};
   const scaleLabel=make(bar,"label","","Timescale ");const select=make(scaleLabel,"select");select.setAttribute("aria-label","Gantt timescale");
-  for(const [v,label] of [["day","Days · detailed"],["week","Weeks · working view"],["month","Months · overview"],["selection","Fit visible activities"],["project","Fit project"]]){const o=make(select,"option","",label);o.value=v;}select.value=controls.ganttScale;select.onchange=()=>{controls.ganttScale=select.value;render();};
+  for(const [v,label] of [["day","Days · detailed"],["week","Weeks · working view"],["month","30-day scale · overview"],["selection","Fit visible activities"],["project","Fit project"]]){const o=make(select,"option","",label);o.value=v;}select.value=controls.ganttScale;select.onchange=()=>{controls.ganttScale=select.value;render();};
   const overview=make(bar,"button","",controls.ganttOverview?"Activity detail":"Work-stage overview");overview.type="button";overview.onclick=()=>{controls.ganttOverview=!controls.ganttOverview;render();};
   const focus=make(bar,"button","",controls.ganttFocus?"All relationships":"Selected relationships");focus.type="button";focus.setAttribute("aria-pressed",String(controls.ganttFocus));focus.onclick=()=>{controls.ganttFocus=!controls.ganttFocus;render();};
   const stage=make(bar,"select");stage.setAttribute("aria-label","Gantt work stage");let opt=make(stage,"option","","All work stages");opt.value="";for(const w of model.wbs||[]){if(!activities.some(a=>a.wbs===w.id))continue;opt=make(stage,"option","",w.name);opt.value=w.id;}stage.value=controls.wbs;stage.onchange=()=>{controls.wbs=stage.value;controls.offset=0;render();};
@@ -130,7 +130,7 @@ async function workspace(){
   const draw=(parent,arr)=>{
    const visible=new Set(arr.map(a=>a.id));
    const local=arr.filter(a=>startValue(a)!==null&&finishValue(a)!==null);
-   const domain=controls.ganttScale==="project"?dated:local.length?local:dated;
+   const projectDated=activities.filter(a=>startValue(a)!==null&&finishValue(a)!==null);const domain=controls.ganttScale==="project"?projectDated:local.length?local:dated;
    const lo=Math.min(...domain.map(startValue)),hi=Math.max(lo+1,...domain.map(finishValue)),span=hi-lo;
    const allRelations=(model.relationships||[]).filter(r=>visible.has(r.from)&&visible.has(r.to));
    if(!visible.has(controls.ganttSelected))controls.ganttSelected=arr[0]?.id;
@@ -141,7 +141,7 @@ async function workspace(){
    const scale=make(chart,"div","gantt-row gantt-scale"),left=make(scale,"strong","","Activity");
    const tick=make(scale,"div","gantt-ticks");
    const relative=dated.some(a=>/^R\+/.test(a.start));
-   const step=pixels?Math.max(1,Math.ceil(65/pixels)):Math.max(1,Math.ceil(span/4));tick.style.position="relative";tick.style.height="28px";tick.style.setProperty("--gantt-grid",(100*step/span)+"%");
+   const step=pixels?({day:3,week:7,month:30}[controls.ganttScale]):Math.max(1,Math.ceil(span/4));tick.style.position="relative";tick.style.height="28px";tick.style.setProperty("--gantt-grid",(100*step/span)+"%");
    const formatDay=v=>relative?"R+"+v:new Date(v*86400000).toISOString().slice(0,10);
    for(let val=lo;val<=hi;val+=step){const t=make(tick,"span","gantt-tick",formatDay(val));t.style.left=(100*(val-lo)/span)+"%";}
    left.textContent="Activity · duration · dates";
