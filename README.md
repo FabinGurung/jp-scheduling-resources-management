@@ -22,3 +22,5 @@ Historical reports, obsolete design notes, map exports and the previous long REA
 
 ## Foreman and live sources
 The shared decorative mascot is installed on interactive public pages by `scripts/install-skyforge-foreman.mjs` using `assets/skyforge-foreman.mjs`. The source register is generated from actual successful source reads by the importer and shown at `schedules/resources/sources.html`. It does not expose restricted file IDs.
+
+Planning control: source settings and evidence intake in the existing master Sheet; Python source V000001 in the publishing Google Doc, reviewed executable `scripts/planning-control.py`. `scripts/build-site-docsheet-v2.mjs` cross-checks eligible slot diagnostics against the existing CPM engine. Project view `control.html` is read-only; no baseline, progress or resource approval is inferred.

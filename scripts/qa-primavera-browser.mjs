@@ -82,6 +82,13 @@ try {
     await page.locator('#inspector h3').getByText('Relative day 0').waitFor();
     if(width<=1130)assert.ok(await page.evaluate(()=>document.querySelector('#detailsPane').getBoundingClientRect().top>=document.querySelector('.centre').getBoundingClientRect().bottom-2),'Selected details must sit below main view');
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'Calendar page has horizontal overflow');
+    await page.getByRole('tab',{name:'Planning control'}).click();
+    await page.getByRole('heading',{name:'Lookahead and readiness'}).waitFor();
+    await page.locator(".control-lookahead table").waitFor();
+    await page.getByRole('combobox',{name:'Lookahead span'}).selectOption("7");
+    assert.ok(await page.locator(".control-lookahead").innerText().then(t=>t.includes("scheduled activities")));
+    await page.getByRole('heading',{name:'Network and float diagnostic'}).waitFor();
+    await page.getByRole('heading',{name:'Baseline, actual progress and resources'}).waitFor();
     await page.getByRole('tab', {name: 'Work packages'}).click();
     await page.getByRole('button', {name: 'Show package'}).waitFor();
     await page.getByRole('tab', {name: 'Drawing packages'}).click();

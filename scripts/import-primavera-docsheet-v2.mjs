@@ -38,7 +38,7 @@ async function sheet(id,range){
 async function schedule(id){
  if(!isId(id))throw Error("Invalid registered Sheet identity");
  // Open-ended row ranges allow projects to grow without silently clipping rows.
- const ranges=["PROJECT!A:C","WBS!A:E","ACTIVITIES!A:M","RELATIONSHIPS!A:J","PACKAGES!A:F","DRAWINGS!A:G","HOLDS!A:F","CALENDAR!A:E"];
+ const ranges=["PROJECT!A:C","WBS!A:E","ACTIVITIES!A:M","RELATIONSHIPS!A:J","PACKAGES!A:F","DRAWINGS!A:G","HOLDS!A:F","CALENDAR!A:E","RESOURCES!A:G"];
  const query=new URLSearchParams({valueRenderOption:"UNFORMATTED_VALUE",dateTimeRenderOption:"FORMATTED_STRING"});
  for(const range of ranges)query.append("ranges",range);
  const data=await request("/sheets/v4/spreadsheets/"+id+"/values:batchGet?"+query);
@@ -78,12 +78,12 @@ async function sourceName(id,mime){
  if(meta.mimeType!==mime||!meta.name)throw Error("Source metadata mismatch");
  return asText(meta.name);
 }
-async function loadOne(row){
+async function loadOne(row,control,intake){
  const project_id=asText(row.project_uid);
  if(!/^PORT-\d{6}$/.test(project_id))throw Error("Invalid project UID");
  const sh=row.schedule_sheet_id,dc=row.narrative_doc_id;
  if(!isId(sh)||!isId(dc))throw Error("Missing source identities for "+project_id);
- const [[project,wbs,acts,rels,packs,drawings,holds,calendarRows],words,sheetName,docName]=await Promise.all([schedule(sh),doc(dc),sourceName(sh,"application/vnd.google-apps.spreadsheet"),sourceName(dc,"application/vnd.google-apps.document")]);
+ const [[project,wbs,acts,rels,packs,drawings,holds,calendarRows,resourceRows],words,sheetName,docName]=await Promise.all([schedule(sh),doc(dc),sourceName(sh,"application/vnd.google-apps.spreadsheet"),sourceName(dc,"application/vnd.google-apps.document")]);
  const facts=Object.fromEntries(project.slice(1).map(x=>[safe(x[0]),safe(x[1])]));
  if(facts["Project ID"]!==project_id||facts["Project name"]!==row.project_title)
   throw Error("Project identity or title crosswalk mismatch for "+project_id);
@@ -115,10 +115,14 @@ async function loadOne(row){
  const calendar=rows(calendarRows).map(x=>({day:asText(x["Day or holiday"]),working:asText(x["Is working day"]),hours:Number(x["Work hours"]||0),effective:asText(x["Effective dates"])}));
  if(calendar.some(x=>!["Yes","No"].includes(x.working)||!Number.isFinite(x.hours)||x.hours<0||x.hours>24))throw Error("Invalid reference calendar");
  const milestones=activities.filter(a=>a.duration===0).map(a=>({id:a.id,title:a.title,wbs:a.wbs,date:a.start}));
+ const resourceReferences=[...new Set(rows(resourceRows).map(x=>x["Activity ID"]).filter(x=>ids.has(x)))];
+ const controlDate=value=>{if(!value)return "";if(/^R\+\d+$/.test(value)||/^\d{4}-\d{2}-\d{2}$/.test(value))return value;if(/^\d{1,6}$/.test(value)){const serial=Number(value);if(serial>=20000&&serial<=100000)return new Date(Date.UTC(1899,11,30)+serial*86400000).toISOString().slice(0,10);}return "";};
+ const span=Number(control["Lookahead span (days)"]);
+ const settings={lookahead_start:controlDate(control["Lookahead start"]),span_days:Number.isInteger(span)&&span>=1&&span<=90?span:14,data_date:controlDate(control["Data date"]),mode:control["Network scenario"]==="AUTO_DIAGNOSTIC"?"AUTO_DIAGNOSTIC":"HOLD",input_warning:!!(control["Lookahead start"]&&!controlDate(control["Lookahead start"])||control["Data date"]&&!controlDate(control["Data date"])||!Number.isInteger(span)||span<1||span>90),intake_counts:Object.fromEntries(Object.entries(intake).map(([k,v])=>[k,v.filter(x=>x["Project ID"]===project_id).length])),resource_reference_ids:resourceReferences};
  const result={id:project_id,title:asText(row.project_title),company:asText(row.company_title),company_key:asText(row.company_key),
   slug:asText(row.slug),group:asText(row.group),source_state:activities.length?"Planning draft — awaiting source review":"Schedule not yet provided",
   baseline_approved:false,site_progress_verified:false,engineering_release:false,
-  activities,relationships:links,wbs:groups,packages:pack,drawings:draw,holds:held,calendar,milestones,public_narrative:words};
+  activities,relationships:links,wbs:groups,packages:pack,drawings:draw,holds:held,calendar,milestones,planning_settings:settings,public_narrative:words};
  return {result,sha:digest(result),sheetName,docName};
 }
 await mkdir(join(out,"projects"),{recursive:true});
@@ -126,6 +130,10 @@ const id=await identifyRegistry();
 const list=rows(await sheet(id,"PROJECTS!A:N"));
 if(list.length!==22||new Set(list.map(x=>x.project_uid)).size!==22)throw Error("Canonical 22-project source index not complete");
 const registeredResources=rows(await sheet(id,"RESOURCE_LIBRARY!A:E"));
+const controlRows=rows(await sheet(id,"PLANNING_CONTROL!A:E")),controlById=new Map(controlRows.map(x=>[x["Project ID"],x]));
+if(controlRows.length!==list.length||controlById.size!==list.length||list.some(x=>!controlById.has(x.project_uid)))throw Error("Planning control inventory does not reconcile");
+const intake=Object.fromEntries(await Promise.all([["baseline","BASELINE_INTAKE"],["progress","PROGRESS_INTAKE"],["crew","CREW_INTAKE"]].map(async([k,tab])=>[k,rows(await sheet(id,tab+"!A:E"))])));
+if(Object.values(intake).flat().some(x=>!controlById.has(x["Project ID"])))throw Error("Unknown project in planning evidence intake");
 const moduleReg=registeredResources.filter(r=>r.Category==="SITE_MODULES");
 if(moduleReg.length!==1||!isId(moduleReg[0]["Live source ID"]))throw Error("Missing distinct registered site-module workbook");
 const moduleId=moduleReg[0]["Live source ID"];
@@ -133,7 +141,7 @@ const privateIds=[id,moduleId,...list.flatMap(row=>[row.schedule_sheet_id,row.na
 if(new Set(privateIds).size!==privateIds.length||!privateIds.every(isId))throw Error("Registry source identities must be distinct and valid");
 const projects=[];const check=[];const sourceEntries=[];
 const addSource=(name,kind,category,company,project,usage)=>sourceEntries.push({name:asText(name),kind,category,company:asText(company),project:asText(project),usage});
-addSource(registryName,"Sheet","Project registry","","","Project identities and resource registry");
+addSource(registryName,"Sheet","Project registry","","","Project identities, resource registry, planning settings and evidence intake counts");
 for(const [category,key,name,usage] of [["WORK_RATES","SKYFORGE_WORK_RATES_SHEET_ID","Skyforge — Work Output Rates — LIVE — V000001","Work output rates and crew references"],["MATERIAL_NORMS","SKYFORGE_MATERIALS_SHEET_ID","Skyforge — Material Consumption Norms — LIVE — V000001","Material consumption norms"]]){
  const row=registeredResources.filter(x=>x.Category===category);
  if(row.length!==1||!isId(row[0]["Live source ID"])||process.env[key]!==row[0]["Live source ID"])throw Error("Reference workbook identity not reconciled");
@@ -142,12 +150,12 @@ for(const [category,key,name,usage] of [["WORK_RATES","SKYFORGE_WORK_RATES_SHEET
 }
 addSource(await sourceName(moduleId,"application/vnd.google-apps.spreadsheet"),"Sheet","Resources","","","Site module resources, checklists, activity links and rates");
 for(let i=0;i<list.length;i+=4){
- const chunk=await Promise.all(list.slice(i,i+4).map(loadOne));
+ const chunk=await Promise.all(list.slice(i,i+4).map(row=>loadOne(row,controlById.get(row.project_uid),intake)));
  for(const x of chunk){projects.push({id:x.result.id,title:x.result.title,company:x.result.company,company_key:x.result.company_key,
   group:x.result.group,slug:x.result.slug,state:x.result.source_state,count:x.result.activities.length});
   check.push({id:x.result.id,sha256:x.sha,activities:x.result.activities.length,links:x.result.relationships.length});
   addSource(x.docName,"Doc","Project sources",x.result.company,x.result.title,"Explicit public narrative paragraphs");
-  addSource(x.sheetName,"Sheet","Project sources",x.result.company,x.result.title,"Activities, dependencies, WBS, packages, drawings, holds and calendar");
+  addSource(x.sheetName,"Sheet","Project sources",x.result.company,x.result.title,"Activities, dependencies, WBS, packages, drawings, holds, calendar and resource reference IDs");
   const render=JSON.stringify(x.result,null,2);
   if(privateIds.some(sourceId=>render.includes(sourceId)))throw Error("Private file identity in the public project output");
   await writeFile(join(out,"projects",x.result.id+".json"),render+"\n");

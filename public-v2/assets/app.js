@@ -48,7 +48,7 @@ async function workspace(){
  document.title=model.title+" — Skyforge";
  const controls={tab:"activities",wbs:"",search:"",offset:0,packageStart:1,packageEnd:Math.min(15,model.activities.length),week:0,month:0,calendarScale:"comfortable",calendarWeeks:1,selectedDay:null,ganttAll:false,ganttZoom:1,showLines:true,ganttScale:"week",ganttOverview:false,ganttFocus:false,ganttSelected:null};
  const initial=document.body.dataset.view||(location.hash||"").replace("#","");
- if(["activities","gantt","calendar","milestones","packages","drawings","history"].includes(initial))controls.tab=initial;
+ if(["activities","gantt","calendar","milestones","packages","drawings","history","control"].includes(initial))controls.tab=initial;
  const inspector=$("inspector"),view=$("view"),left=$("leftStages");
  let ganttObserver=null;
  const revealDetails=()=>{if(matchMedia("(max-width:1130px)").matches)$("detailsPane").scrollIntoView({block:"start",behavior:"auto"});};
@@ -235,8 +235,56 @@ async function workspace(){
  function drawingView(){const entries=model.drawings||[];make(view,"h3","","Drawing packages");make(view,"p","muted","The drawing repository retains authoritative working drawings and their revision history. Restricted sources remain in the signed-in Google Drive directory.");href(view,"Open drawing library","https://fabingurung.github.io/jp-drawing-coordination/");if(model.id==="PORT-000001"){make(view,"p");href(view,"Ground-floor beam and slab drawing packages (R02)","https://fabingurung.github.io/jp-drawing-coordination/projects/narayani-parajuli/gf-beam-slab/");make(view,"p","notice","R02 is a site coordination draft, not an engineering release.");}if(!entries.length)return empty(view,"No drawing-to-activity links have passed source review for this project.");for(const d of entries){const b=make(view,"button","row-action",d.drawing+" · Revision "+d.revision+(d.activity?" · "+d.activity:""));b.type="button";b.onclick=()=>{setInspector({kind:"drawing",title:d.drawing});if(d.activity&&byId.has(d.activity))href(inspector,"Open linked activity","activities.html?project="+encodeURIComponent(model.id)+"&activity="+encodeURIComponent(d.activity));revealDetails();};}}
  function milestoneView(){const milestones=activities.filter(a=>a.duration===0);make(view,"p","notice","Zero-duration milestones and inspection gates from the planning source; not actual completion.");if(!milestones.length)return empty(view,"No recorded milestones.");makeRowList(view,milestones);}
  function historyView(){make(view,"h3","","Previous planning editions");make(view,"p","muted","Previous versions are retained for source comparison and review.");if(/^(fishtail|rohini|jp|paila)$/.test(model.company_key)&&/^[a-z0-9-]+$/.test(model.slug))href(view,"Open previous project page","../../projects/"+model.company_key+"/"+model.slug+"/");if(model.id==="PORT-000001"){make(view,"p");href(view,"Narayani v002 schedule","../../projects/narayani/schedule-v002.html");}if(model.id==="PORT-000014"){make(view,"p");href(view,"Harisharan v002 schedule","../../projects/fishtail/harisharan-residence/schedule-v002.html");make(view,"p");href(view,"Harisharan v003 measured BOQ reference","../../projects/fishtail/harisharan-residence/boq-v003.html");}}
+ function controlView(){
+  const c=model.planning_control,s=model.planning_settings;
+  if(!c||!s)return empty(view,"Planning controls have not been synchronized.");
+  make(view,"h3","","Planning control");
+  make(view,"p","notice","Draft schedule only. No approved baseline, verified actual progress, resource capacity or critical path. Work-slot calculations are diagnostics, not a rescheduled plan.");
+  const metrics=make(view,"div","control-metrics");
+  for(const [title,value] of [["Activities",c.activity_count],["Relationships",c.relationship_count],["Open admitted holds",model.holds.length],["Zero-duration events",model.milestones.length]]){const card=make(metrics,"div","control-metric");make(card,"strong","",value);make(card,"small","",title);}
+  make(view,"h3","","Lookahead and readiness");
+  const dated=activities.filter(a=>startValue(a)!==null&&finishValue(a)!==null);
+  if(dated.length){
+   const relative=dated.every(a=>/^R\+/.test(a.start));
+   const civil=dated.every(a=>/^\d{4}-\d{2}-\d{2}$/.test(a.start));
+   if(relative||civil){
+    const origin=Math.min(...dated.map(startValue)),last=Math.max(...dated.map(finishValue));
+    const parse=v=>relative?( /^R\+\d+$/.test(v)?Number(v.slice(2)):/^\d+$/.test(v)?Number(v):null):/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v))?Date.parse(v)/86400000:null;
+    const format=v=>relative?"R+"+v:new Date(v*86400000).toISOString().slice(0,10);
+    const bar=make(view,"div","toolbar"),label=make(bar,"label","","Start "),input=make(label,"input");input.type=relative?"number":"date";input.setAttribute("aria-label","Lookahead start");input.value=relative?String(parse(s.lookahead_start)??origin):format(parse(s.lookahead_start)??origin);if(relative)input.min="0";
+    const rangeLabel=make(bar,"label","","Span ");const span=make(rangeLabel,"select");span.setAttribute("aria-label","Lookahead span");for(const n of [...new Set([7,14,28,s.span_days])].sort((a,b)=>a-b)){const o=make(span,"option","",n+" days");o.value=String(n);}span.value=String(s.span_days);
+    const prev=make(bar,"button","","Previous");prev.type="button";const next=make(bar,"button","","Next");next.type="button";
+    const result=make(view,"div","control-lookahead");
+    const move=direction=>{const v=parse(input.value)??origin;const n=Math.max(relative?0:-Infinity,v+direction*Number(span.value));input.value=relative?String(n):format(n);draw();};prev.onclick=()=>move(-1);next.onclick=()=>move(1);
+    function draw(){
+     result.replaceChildren();const st=parse(input.value);if(st===null||!Number.isFinite(st)||!Number.isInteger(st))return empty(result,"Enter a valid lookahead start.");const en=st+Number(span.value);
+     const selected=matching().filter(a=>{const x=startValue(a),y=finishValue(a);return x!==null&&y!==null&&(x===y?x>=st&&x<en:x<en&&y>st);});
+     const held=new Set(model.holds.map(h=>h.activity)),refs=new Set(s.resource_reference_ids||[]);
+     make(result,"p","small muted",format(st)+" to "+format(en)+" (end exclusive) · "+selected.length+" scheduled activities · "+selected.filter(a=>held.has(a.id)).length+" with open admitted holds · "+selected.filter(a=>refs.has(a.id)).length+" with resource preparation references");
+     make(result,"p","small muted","Source date intervals only; no holiday recalculation or actual progress inference. Data date: "+(s.data_date||"not registered")+".");
+     if(s.input_warning)make(result,"p","notice","A planning control setting requires review; safe defaults are used.");
+     if(!selected.length)return empty(result,"No matching activities in this window.");
+     const wrap=make(result,"div","table-wrap"),table=make(wrap,"table"),head=make(make(table,"thead"),"tr");for(const h of ["Activity","Start","Finish","Readiness"])make(head,"th","",h);
+     const body=make(table,"tbody");for(const a of selected.sort((a,b)=>startValue(a)-startValue(b))){const tr=make(body,"tr"),cell=make(tr,"td"),b=make(cell,"button","row-action",a.title);b.type="button";b.onclick=()=>{setInspector({kind:"activity",activity:a});revealDetails();};make(tr,"td","",shortDate(a.start));make(tr,"td","",shortDate(a.finish));make(tr,"td","",held.has(a.id)?"Open hold":refs.has(a.id)?"Preparation reference":a.duration===0?"Milestone / inspection":"Release unverified");}
+    }input.onchange=draw;span.onchange=draw;draw();
+   }else empty(view,"Mixed source date formats; lookahead held until reconciled.");
+  }else empty(view,"No dated activities for a lookahead.");
+  make(view,"h3","","Network and float diagnostic");
+  make(view,"p","small muted",c.roots+" network starts · "+c.terminals+" network ends · "+c.relative_span_mismatches+" relative date-span differences · "+c.non_workday_nonzero_lags+" incompatible nonzero lags.");
+  if(c.scenario.state==="WORK_SLOT_DIAGNOSTIC"){
+   make(view,"p","notice","Logic-only shared work-slot scenario, independently checked against the existing scheduling engine. Excludes civil calendar, constraints, actuals and resource leveling; does not replace the source schedule.");
+   make(view,"p","","Network finish: "+c.scenario.finish+" abstract work slots; "+c.scenario.activities.filter(a=>a.zero_float).length+" zero-float activities in this scenario.");
+   const only=make(view,"button","ghost","Show all scenario activities");only.type="button";const list=make(view,"div","table-wrap");let all=false;
+   const fill=()=>{list.replaceChildren();const table=make(list,"table"),head=make(make(table,"thead"),"tr");for(const h of ["Activity","Early start","Early finish","Total float (slots)"])make(head,"th","",h);const body=make(table,"tbody");const allowed=new Set(matching().map(a=>a.id));for(const a of c.scenario.activities.filter(a=>allowed.has(a.id)&&(all||a.zero_float))){const row=make(body,"tr"),cell=make(row,"td"),b=make(cell,"button","row-action",byId.get(a.id)?.title||a.id);b.type="button";b.onclick=()=>{setInspector({kind:"activity",activity:byId.get(a.id)});revealDetails();};make(row,"td","",a.early_start);make(row,"td","",a.early_finish);make(row,"td","",a.total_float);}};only.onclick=()=>{all=!all;only.textContent=all?"Show zero-float scenario activities":"Show all scenario activities";fill()};fill();
+  }else{make(view,"p","notice","CPM scenario held — "+c.scenario.reasons.join("; "));}
+  make(view,"h3","","Baseline, actual progress and resources");
+  for(const [key,label,reason] of [["baseline","Baseline","An accepted, versioned baseline is required."],["progress","Actual progress","A verified data date and measured actuals are required."],["crew","Resource loading","Activity-specific allocations and verified capacity are required."]]){
+   const p=make(view,"p","notice",label+" — "+(s.intake_counts[key]||0)+" intake records; "+reason+" No verified calculation yet.");
+  }
+  href(view,"Open the signed-in source register for control inputs","../resources/sources.html");
+ }
  function render(){if(ganttObserver){ganttObserver.disconnect();ganttObserver=null;}view.replaceChildren();for(const b of document.querySelectorAll(".tabs button"))b.setAttribute("aria-selected",b.dataset.view===controls.tab?"true":"false");
-  if(controls.tab==="activities")activityView();else if(controls.tab==="gantt")ganttView();else if(controls.tab==="calendar")calendarView();else if(controls.tab==="milestones")milestoneView();else if(controls.tab==="packages")packageView();else if(controls.tab==="history")historyView();else drawingView();}
+  if(controls.tab==="activities")activityView();else if(controls.tab==="gantt")ganttView();else if(controls.tab==="calendar")calendarView();else if(controls.tab==="milestones")milestoneView();else if(controls.tab==="packages")packageView();else if(controls.tab==="history")historyView();else if(controls.tab==="control")controlView();else drawingView();}
  for(const tab of document.querySelectorAll(".tabs button"))tab.onclick=()=>{location.assign(tab.dataset.view+".html?project="+encodeURIComponent(model.id));};
  stageList();const selectedActivity=byId.get(new URLSearchParams(location.search).get("activity"));if(selectedActivity&&controls.tab==="activities")controls.offset=Math.floor(activities.indexOf(selectedActivity)/50)*50;render();if(activities.length)setInspector({kind:"activity",activity:selectedActivity||activities[0]});
  else empty(inspector,"This project does not yet have an accepted scheduling register.");

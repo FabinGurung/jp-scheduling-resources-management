@@ -40,6 +40,9 @@ for(const p of index.projects){
   assert.equal(link.from_name,names.get(link.from),"Predecessor wording changed in "+p.id);
   assert.equal(link.to_name,names.get(link.to),"Successor wording changed in "+p.id);
  }
+ assert.ok(x.planning_settings&&x.planning_control,"Missing planning control projection");
+ const c=x.planning_control;assert.equal(c.activity_count,x.activities.length);assert.equal(c.relationship_count,x.relationships.length);assert.equal(c.approved_critical_path,false);assert.equal(c.baseline_approved,false);assert.equal(c.progress_verified,false);assert.equal(c.resource_loading_verified,false);
+ if(c.scenario.state==="WORK_SLOT_DIAGNOSTIC"){assert.equal(c.scenario.independent_kernel_check,true);assert.equal(c.scenario.activities.length,x.activities.length);assert.ok(c.scenario.activities.every(a=>Number.isFinite(a.total_float)&&a.total_float>=-1e-9));}else{assert.equal(c.scenario.state,"HELD");assert.equal(c.scenario.activities.length,0);}
  if(x.activities.length)complete++;
  totalActs+=x.activities.length;totalLinks+=x.relationships.length;
  if(verifyMigration&&p.id==="PORT-000001"){assert.equal(x.activities.length,160);assert.equal(x.relationships.length,210);assert.ok(x.public_narrative.length);}
@@ -65,7 +68,7 @@ for(const [i,html] of core.entries()){
   throw Error("Developer or machine terminology leaked into customer UI "+i);
  assert.match(html,/Home/);assert.match(html,/Projects/);assert.match(html,/Resources/);
 }
-for(const route of ["activities","gantt","calendar","milestones","packages","drawings","history"]){const html=await readFile(join(dir,"projects",route+".html"),"utf8");assert.ok(html.includes('data-view="'+route+'"'),"Missing independent route "+route);}
+for(const route of ["activities","gantt","calendar","milestones","packages","drawings","history","control"]){const html=await readFile(join(dir,"projects",route+".html"),"utf8");assert.ok(html.includes('data-view="'+route+'"'),"Missing independent route "+route);}
 const modulesText=await readFile(join(data,"resources","site-modules.json"),"utf8");assert.ok(!privateSourcePattern.test(modulesText),"Private source reference leaked in site modules");const modules=JSON.parse(modulesText);assert.equal(modules.construction_release,false);assert.ok(modules.modules.some(m=>m.id==="WP-001"&&m.checklist.length));assert.ok(modules.modules.some(m=>m.id==="R02-SLB"&&m.links.length));await stat(join(dir,"resources","modules.html"));
 const resources=await Promise.all(["productivity-norms.v1.json","material-references.v1.json"].map(f=>json(join(data,"resources",f))));
 assert.equal(resources[0].items.length,88);assert.equal(resources[1].recipes.length,36);
