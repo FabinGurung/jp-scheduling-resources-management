@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const config = {"cards": [{"title": "Live schedule projects", "kind": "Source directory", "url": "/jp-scheduling-resources-management/schedules/projects/"}, {"title": "Registered schedule Sheets and Docs", "kind": "Google Drive · sign in", "url": "https://drive.google.com/drive/u/0/search?q=jp-scheduling-resources-management"}, {"title": "Work output rates and material references", "kind": "Google Drive · sign in", "url": "https://drive.google.com/drive/u/0/search?q=Skyforge%20Work%20Output%20Rates"}]};
+  const config = {"cards":[{"title":"Live source register","kind":"48 verified publishing inputs","url":"/jp-scheduling-resources-management/schedules/resources/sources.html"},{"title":"Synchronized Google Drive folder","kind":"Google Drive · sign in","url":"https://drive.google.com/drive/folders/1HGw_OKAQobPCv2JW0j23eUqjBwlsJdpt"},{"title":"Project Docs, Sheets and folders","kind":"Exact links · Google sign in","url":"https://docs.google.com/spreadsheets/d/1ONVr7nEC4noswyH9bBuXI9GEVW5r6RcaDyo-Z3z2uy4/edit#gid=102"},{"title":"Resource and publishing references","kind":"Exact links · Google sign in","url":"https://docs.google.com/spreadsheets/d/1ONVr7nEC4noswyH9bBuXI9GEVW5r6RcaDyo-Z3z2uy4/edit#gid=103"}]};
   if (!config.cards?.length || document.querySelector('jp-source-gallery')) return;
 
   const component = document.createElement('jp-source-gallery');
