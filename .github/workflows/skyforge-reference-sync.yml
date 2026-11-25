@@ -183,8 +183,10 @@ jobs:
             }
           }
           await walk('dist');
-          assert.equal(live,79);assert.equal(redirects,15);
+          assert.equal(live,80);assert.equal(redirects,15);
           await stat('dist/schedules/resources/sources.html');
+          await stat('dist/schedules/projects/control.html');
+          for(const project of ['PORT-000001','PORT-000014']){const x=JSON.parse(await readFile('dist/schedules/data/projects/'+project+'.json','utf8'));assert.equal(x.planning_control.approved_critical_path,false);assert.ok(x.planning_settings);}
           assert.equal(await readFile('dist/assets/skyforge-foreman.mjs','utf8'),await readFile('dist/schedules/assets/skyforge-foreman.mjs','utf8'));
           const raw=await readFile('dist/schedules/data/source-register.json','utf8');
           assert.ok(!/docs\.google\.com\/|drive\.google\.com\/|@|access_token|ya29\.|PRIVATE KEY/i.test(raw));
