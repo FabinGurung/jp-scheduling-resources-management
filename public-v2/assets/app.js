@@ -46,7 +46,7 @@ async function workspace(){
   href(footer,"Previous project page","../../projects/"+model.company_key+"/"+model.slug+"/");
  }
  document.title=model.title+" — Skyforge";
- const controls={tab:"activities",wbs:"",search:"",offset:0,packageStart:1,packageEnd:Math.min(15,model.activities.length),week:0,month:0,calendarScale:"comfortable",calendarWeeks:1,selectedDay:null,ganttAll:false,ganttZoom:1,showLines:true};
+ const controls={tab:"activities",wbs:"",search:"",offset:0,packageStart:1,packageEnd:Math.min(15,model.activities.length),week:0,month:0,calendarScale:"comfortable",calendarWeeks:1,selectedDay:null,ganttAll:false,ganttZoom:1,showLines:true,ganttScale:"week",ganttOverview:false,ganttFocus:false,ganttSelected:null};
  const initial=document.body.dataset.view||(location.hash||"").replace("#","");
  if(["activities","gantt","calendar","milestones","packages","drawings","history"].includes(initial))controls.tab=initial;
  const inspector=$("inspector"),view=$("view"),left=$("leftStages");
@@ -113,21 +113,41 @@ async function workspace(){
   const bar=make(view,"div","toolbar");
   const all=make(bar,"button","",controls.ganttAll?"Show 50 activities":"Show all activities");all.type="button";all.onclick=()=>{controls.ganttAll=!controls.ganttAll;controls.offset=0;render();};
   const dep=make(bar,"button","",controls.showLines?"Hide dependency lines":"Show dependency lines");dep.type="button";dep.setAttribute("aria-pressed",String(controls.showLines));dep.onclick=()=>{controls.showLines=!controls.showLines;render();};
-  for(const [label,z] of [["Zoom out",.5],["Fit timeline",1],["Zoom in",2]]){const b=make(bar,"button","",label);b.type="button";b.setAttribute("aria-pressed",String(controls.ganttZoom===z));b.onclick=()=>{controls.ganttZoom=z;render();};}
-  const lo=Math.min(...dated.map(startValue)),hi=Math.max(lo+1,...dated.map(finishValue)),span=hi-lo;
+  const scaleLabel=make(bar,"label","","Timescale ");const select=make(scaleLabel,"select");select.setAttribute("aria-label","Gantt timescale");
+  for(const [v,label] of [["day","Days · detailed"],["week","Weeks · working view"],["month","30-day scale · overview"],["selection","Fit visible activities"],["project","Fit project"]]){const o=make(select,"option","",label);o.value=v;}select.value=controls.ganttScale;select.onchange=()=>{controls.ganttScale=select.value;render();};
+  const overview=make(bar,"button","",controls.ganttOverview?"Activity detail":"Work-stage overview");overview.type="button";overview.onclick=()=>{controls.ganttOverview=!controls.ganttOverview;render();};
+  const focus=make(bar,"button","",controls.ganttFocus?"All relationships":"Selected relationships");focus.type="button";focus.setAttribute("aria-pressed",String(controls.ganttFocus));focus.onclick=()=>{controls.ganttFocus=!controls.ganttFocus;render();};
+  const stage=make(bar,"select");stage.setAttribute("aria-label","Gantt work stage");let opt=make(stage,"option","","All work stages");opt.value="";for(const w of model.wbs||[]){if(!activities.some(a=>a.wbs===w.id))continue;opt=make(stage,"option","",w.name);opt.value=w.id;}stage.value=controls.wbs;stage.onchange=()=>{controls.wbs=stage.value;controls.offset=0;render();};
+  make(view,"p","small muted","Choose a work stage and scale, then select an activity to inspect its predecessors and successors. Scroll the timeline horizontally; the activity column stays in view. Dates are planning references, not actual progress.");
+  if(controls.ganttOverview){
+   const lo=Math.min(...dated.map(startValue)),hi=Math.max(lo+1,...dated.map(finishValue)),span=hi-lo;
+   make(view,"p","notice","Work-stage overview: earliest start to latest finish for each group. This is a date envelope, not an effort or progress bar.");
+   const wrap=make(view,"div","gantt-stage-overview");
+   const groups=new Map();for(const a of dated){const k=a.wbs||"";if(!groups.has(k))groups.set(k,[]);groups.get(k).push(a);}
+   for(const [id,items] of groups){const st=Math.min(...items.map(startValue)),en=Math.max(...items.map(finishValue)),row=make(wrap,"div","gantt-summary-row"),btn=make(row,"button","row-action",model.wbs?.find(w=>w.id===id)?.name||"Unassigned");btn.type="button";make(btn,"small","",items.length+" activities · "+shortDate(items.find(a=>startValue(a)===st).start)+" → "+shortDate(items.find(a=>finishValue(a)===en).finish));btn.onclick=()=>{controls.wbs=id;controls.ganttOverview=false;controls.offset=0;render();};const track=make(row,"div","gantt-track"),b=make(track,"span","gantt-summary-bar");b.style.left=(100*(st-lo)/span)+"%";b.style.width=Math.max(0,100*(en-st)/span)+"%";}
+   return;
+  }
   const draw=(parent,arr)=>{
    const visible=new Set(arr.map(a=>a.id));
-   const relations=(model.relationships||[]).filter(r=>visible.has(r.from)&&visible.has(r.to));
+   const local=arr.filter(a=>startValue(a)!==null&&finishValue(a)!==null);
+   const projectDated=activities.filter(a=>startValue(a)!==null&&finishValue(a)!==null);const domain=controls.ganttScale==="project"?projectDated:local.length?local:dated;
+   const lo=Math.min(...domain.map(startValue)),hi=Math.max(lo+1,...domain.map(finishValue)),span=hi-lo;
+   const allRelations=(model.relationships||[]).filter(r=>visible.has(r.from)&&visible.has(r.to));
+   if(!visible.has(controls.ganttSelected))controls.ganttSelected=arr[0]?.id;
+   const relations=allRelations.filter(r=>!controls.ganttFocus||r.from===controls.ganttSelected||r.to===controls.ganttSelected);
    const beyond=(model.relationships||[]).filter(r=>visible.has(r.from)!==visible.has(r.to)).length;
    make(parent,"p","small muted",relations.length+" dependency lines in view; "+beyond+" relationships extend outside this selection. FS = finish to start; SS = start to start; FF = finish to finish; SF = start to finish. Use Show all activities or clear filters to see more.");
-   const scroller=make(parent,"div","gantt-scroll"),chart=make(scroller,"div","gantt-chart");chart.style.minWidth=Math.max(480,Math.round(760*controls.ganttZoom))+"px";
+   const scroller=make(parent,"div","gantt-scroll"),chart=make(scroller,"div","gantt-chart");chart.classList.add("planner-chart");const labelWidth=innerWidth<600?144:230;const pixels={day:26,week:9,month:3}[controls.ganttScale];const timelineWidth=pixels?Math.max(320,Math.min(60000,span*pixels)):Math.max(220,scroller.clientWidth-labelWidth-28);chart.style.setProperty("--gantt-label",labelWidth+"px");chart.style.setProperty("--gantt-time",timelineWidth+"px");chart.style.width=(labelWidth+timelineWidth+24)+"px";chart.dataset.span=String(span);chart.dataset.scale=controls.ganttScale;
    const scale=make(chart,"div","gantt-row gantt-scale"),left=make(scale,"strong","","Activity");
    const tick=make(scale,"div","gantt-ticks");
    const relative=dated.some(a=>/^R\+/.test(a.start));
-   for(let i=0;i<=4;i++){const val=Math.round(lo+span*i/4);make(tick,"span","",relative?"R+"+val:new Date(val*86400000).toISOString().slice(0,10));}
+   const step=pixels?({day:3,week:7,month:30}[controls.ganttScale]):Math.max(1,Math.ceil(span/4));tick.style.position="relative";tick.style.height="28px";tick.style.setProperty("--gantt-grid",(100*step/span)+"%");
+   const formatDay=v=>relative?"R+"+v:new Date(v*86400000).toISOString().slice(0,10);
+   for(let val=lo;val<=hi;val+=step){const t=make(tick,"span","gantt-tick",formatDay(val));t.style.left=(100*(val-lo)/span)+"%";}
+   left.textContent="Activity · duration · dates";
    const tracks=new Map();
-   for(const a of arr){const row=make(chart,"div","gantt-row");const label=make(row,"button","row-action",a.title);label.type="button";label.onclick=()=>{setInspector({kind:"activity",activity:a});revealDetails();};
-    const track=make(row,"div","gantt-track"),b=make(track,"span","gantt-bar");
+   for(const a of arr){const row=make(chart,"div","gantt-row");const label=make(row,"button","row-action gantt-activity",a.title);label.type="button";label.dataset.activity=a.id;label.setAttribute("aria-pressed",String(controls.ganttSelected===a.id));make(label,"small","gantt-meta",a.id+" · "+(a.duration===null?"—":a.duration+" "+(a.unit||"d")));make(label,"small","gantt-meta",shortDate(a.start)+" → "+shortDate(a.finish));label.onclick=()=>{controls.ganttSelected=a.id;setInspector({kind:"activity",activity:a});if(controls.ganttFocus){const x=scroller.scrollLeft,y=scroller.scrollTop;render();const next=view.querySelector(".gantt-scroll");if(next){next.scrollLeft=x;next.scrollTop=y;}}else{for(const b of chart.querySelectorAll(".gantt-activity"))b.setAttribute("aria-pressed",String(b.dataset.activity===a.id));for(const p of chart.querySelectorAll(".dependency-line"))p.classList.toggle("selected-edge",p.dataset.from===a.id||p.dataset.to===a.id);}revealDetails();};
+    const track=make(row,"div","gantt-track"),b=make(track,"span","gantt-bar");track.style.setProperty("--gantt-grid",(100*step/span)+"%");
     const st=startValue(a),en=finishValue(a);
     if(st===null||en===null){b.style.display="none";continue;}
     b.style.left=(100*(st-lo)/span)+"%";b.style.width=Math.max(.3,100*(en-st)/span)+"%";
@@ -150,8 +170,8 @@ async function workspace(){
      const ar=a.track.getBoundingClientRect(),br=b.track.getBoundingClientRect();
      const x1=ar.left-box.left+ar.width*((type[0]==="S"?a.st:a.en)-lo)/span,x2=br.left-box.left+br.width*((type[1]==="S"?b.st:b.en)-lo)/span;
      const y1=ar.top-box.top+ar.height/2,y2=br.top-box.top+br.height/2;
-     const elbow=x1+Math.max(5,Math.min(22,Math.abs(x2-x1)/3))+(i++%4)*2;
-     const line=sn("path",{d:"M"+x1+" "+y1+" H"+elbow+" V"+y2+" H"+x2,fill:"none",stroke:colors[type],"stroke-width":1.25,"stroke-opacity":.72,"marker-end":"url(#dep-arrow-"+type+")",class:"dependency-line","data-type":type,"data-from":r.from,"data-to":r.to});
+     const direction=type[0]==="F"?1:-1;const elbow=x1+direction*(Math.max(5,Math.min(22,Math.abs(x2-x1)/3))+(i++%4)*2);
+     const line=sn("path",{d:"M"+x1+" "+y1+" H"+elbow+" V"+y2+" H"+x2,fill:"none",stroke:colors[type],"stroke-width":1.25,"stroke-opacity":.72,"marker-end":"url(#dep-arrow-"+type+")",class:"dependency-line"+(r.from===controls.ganttSelected||r.to===controls.ganttSelected?" selected-edge":""),"data-type":type,"data-from":r.from,"data-to":r.to});
      sn("title",{},line).textContent=(byId.get(r.from)?.title||r.from)+" → "+(byId.get(r.to)?.title||r.to)+" ("+type+(r.lag?" "+r.lag:"")+")";
     }
    };
