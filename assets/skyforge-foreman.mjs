@@ -35,7 +35,7 @@ function mount(){
  const worker=shadow.querySelector(".character"),ladder=shadow.querySelector(".ladder"),toggle=shadow.querySelector("button"),link=shadow.querySelector("a"),overlay=shadow.querySelector(".overlay");
  link.href=new URL(marker?.dataset.sourceRegister||"resources/sources.html",document.baseURI).href;
  document.body.append(host);
- let route=[],index=0,start=0,wait=0,position=null,frame=0,dirty=true,lastPath=null,reverse=false,lastScan=0;
+ let route=[],index=0,start=0,wait=0,position=null,frame=0,dirty=true,lastPath=null,reverse=false,lastScan=0,settleTimer=0,lastSegment=-1,hidden=getHidden();
  const visible=(r)=>r.width>0&&r.height>0&&r.right>8&&r.left<innerWidth-8&&r.bottom>12&&r.top<innerHeight-12;
  const safe=(p)=>p.x>=16&&p.x<=innerWidth-16&&p.y>=42&&p.y<=innerHeight-24;
  const anchor=(r)=>({x:clamp(r.left+Math.min(r.width*.45,60),18,innerWidth-18),y:clamp(r.bottom,45,innerHeight-26)});
@@ -44,7 +44,7 @@ function mount(){
   if(!paths.length)return [];
   // Sample actual rendered SVG geometry; respect the scrolling Gantt viewport.
   const choices=[];
-  for(const p of paths){if(!visible(p.getBoundingClientRect())&&p.getBoundingClientRect().height<1)continue;
+  for(const p of paths.filter(p=>visible(p.getBoundingClientRect())).slice(0,24)){
    const clip=p.closest(".gantt-scroll")?.getBoundingClientRect();
    const matrix=p.getScreenCTM();if(!matrix)continue;
    const len=p.getTotalLength();if(!len)continue;
@@ -78,9 +78,9 @@ function mount(){
  function refresh(t){lastScan=t;let points=pathRoute(),mode="gantt";
   if(!points.length){points=calendarRoute();mode="calendar"}
   if(!points.length){points=headingRoute();mode="page"}
-  host.dataset.mode=mode;route=points;index=0;start=t;wait=0;position=route[0];dirty=false;ladder.replaceChildren();
+  host.dataset.mode=mode;route=points.length>1?[...points,...points.slice(0,-1).reverse()]:points;index=0;start=t;wait=0;position=route[0];dirty=false;lastSegment=-1;ladder.replaceChildren();
  }
- function paint(p,rest=false){worker.style.transform="translate("+(p.x-worker.getBoundingClientRect().width/2)+"px,"+(p.y-worker.getBoundingClientRect().height*.80)+"px)";worker.classList.toggle("rest",rest);host.dataset.x=String(Math.round(p.x));host.dataset.y=String(Math.round(p.y))}
+ function paint(p,rest=false){const small=innerWidth<=600;worker.style.transform="translate("+(p.x-(small?17:21))+"px,"+(p.y-(small?31:38))+"px)";worker.classList.toggle("rest",rest);host.dataset.x=String(Math.round(p.x));host.dataset.y=String(Math.round(p.y))}
  function drawLadder(a,b){
   ladder.replaceChildren();
   if(host.dataset.mode!=="page"||Math.abs(a.x-b.x)>5||Math.abs(a.y-b.y)<35)return;
@@ -88,26 +88,26 @@ function mount(){
   const line=(x1,y1,x2,y2)=>{const e=document.createElementNS(ns,"line");for(const [k,v] of Object.entries({x1,y1,x2,y2,stroke:"#a87a43","stroke-width":1.5,"stroke-linecap":"round"}))e.setAttribute(k,v);ladder.append(e)};
   line(x-6,top,x-6,bottom);line(x+6,top,x+6,bottom);for(let y=top+6;y<bottom;y+=10)line(x-6,y,x+6,y);
  }
- function tick(t){frame=0;if(getHidden()||document.hidden)return;
+ function tick(t){frame=0;if(hidden||document.hidden)return;
   if(dirty||!route.length||t-lastScan>2500&&index>=route.length-1)refresh(t);
   if(reduced.matches){worker.classList.add("still");paint(route[0]);return}
   worker.classList.remove("still");
-  if(wait>t){paint(position,true);frame=requestAnimationFrame(tick);return}
-  if(index>=route.length-1){dirty=true;frame=requestAnimationFrame(tick);return}
+  if(wait>t){paint(position,true);settleTimer=setTimeout(schedule,Math.max(0,wait-t));return}
+  if(index>=route.length-1){paint(position,true);settleTimer=setTimeout(()=>{dirty=true;schedule()},900);return}
   const a=route[index],b=route[index+1],distance=Math.hypot(b.x-a.x,b.y-a.y),duration=host.dataset.mode==="gantt"?Math.max(80,distance/48*1000):b.jump?Math.max(330,Math.min(1000,distance*5)):Math.max(100,distance/40*1000);
   const k=clamp((t-start)/duration,0,1);position={x:a.x+(b.x-a.x)*k,y:a.y+(b.y-a.y)*k-(b.jump?Math.sin(k*Math.PI)*Math.min(28,distance/3):0)};
-  if(k===0||!ladder.childNodes.length)drawLadder(a,b);paint(position);
+  if(lastSegment!==index){drawLadder(a,b);lastSegment=index;}paint(position);
   if(k>=1){index++;start=t;ladder.replaceChildren();if(b.rest||b.important){wait=t+(b.rest?2800:1200);start=wait}}
   frame=requestAnimationFrame(tick);
  }
- function schedule(){if(!frame&&!getHidden()&&!document.hidden)frame=requestAnimationFrame(tick)}
- function invalidate(){dirty=true;schedule()}
- function sync(){const hidden=getHidden();overlay.style.display=hidden?"none":"block";toggle.textContent=hidden?"Show Foreman":"Hide Foreman";toggle.setAttribute("aria-pressed",String(!hidden));if(hidden&&frame){cancelAnimationFrame(frame);frame=0}invalidate()}
+ function schedule(){if(!frame&&!hidden&&!document.hidden)frame=requestAnimationFrame(tick)}
+ function invalidate(){dirty=true;clearTimeout(settleTimer);if(frame){cancelAnimationFrame(frame);frame=0}overlay.style.visibility="hidden";settleTimer=setTimeout(()=>{overlay.style.visibility="visible";schedule()},180)}
+ function sync(){hidden=getHidden();overlay.style.display=hidden?"none":"block";toggle.textContent=hidden?"Show Foreman":"Hide Foreman";toggle.setAttribute("aria-pressed",String(!hidden));invalidate()}
  toggle.addEventListener("click",()=>{setHidden(!getHidden());sync()});reduced.addEventListener?.("change",invalidate);
  addEventListener("scroll",invalidate,{passive:true,capture:true});addEventListener("resize",invalidate,{passive:true});
  document.addEventListener("visibilitychange",invalidate);
  const target=document.querySelector("#view")||document.querySelector("main")||document.body;
- new MutationObserver(records=>{if(records.some(r=>r.target!==host&&!host.contains(r.target)))invalidate()}).observe(target,{childList:true,subtree:true,attributes:true,attributeFilter:["aria-pressed","aria-current","class","d"]});
+ new MutationObserver(records=>{if(records.some(r=>r.target!==host&&!host.contains(r.target)))invalidate()}).observe(target,{childList:true,subtree:true,attributes:true,attributeFilter:["aria-pressed","aria-current","d"]});
  sync();
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",mount,{once:true});else mount();

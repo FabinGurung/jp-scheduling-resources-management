@@ -48,6 +48,13 @@ try {
     await page.waitForURL(/gantt\.html\?project=PORT-000001/);
     await page.locator('.gantt-bar').first().waitFor();
     assert.equal(await page.locator('.gantt-bar').count(), 50);
+    assert.equal(await page.locator(".planner-chart").getAttribute("data-scale"),"week");
+    await page.getByRole("combobox",{name:"Gantt timescale"}).selectOption("day");
+    assert.equal(await page.locator(".planner-chart").getAttribute("data-scale"),"day");
+    await page.getByRole("button",{name:"Work-stage overview"}).click();
+    assert.ok(await page.locator(".gantt-summary-row").count()>0);
+    await page.getByRole("button",{name:"Activity detail"}).click();
+    await page.getByRole("combobox",{name:"Gantt timescale"}).selectOption("week");
     assert.ok(await page.locator('.dependency-line').count()>0,"Missing dependency arrows");
     assert.ok(await page.locator('.dependency-line').evaluateAll(lines=>lines.every(l=>/^(FS|SS|FF|SF)$/.test(l.dataset.type)&&l.dataset.from&&l.dataset.to)));
     await page.getByRole('button',{name:'Hide dependency lines'}).click();
@@ -56,6 +63,8 @@ try {
     await page.locator('.dependency-line').first().waitFor({state:'attached'});
     await page.locator(".gantt-scroll").scrollIntoViewIfNeeded();
     await page.waitForFunction(()=>document.querySelector("skyforge-foreman")?.dataset.mode==="gantt");
+    const before=await page.locator("skyforge-foreman").getAttribute("data-y");
+    await page.waitForFunction(y=>document.querySelector("skyforge-foreman")?.dataset.y!==y,before,{timeout:10000});
     assert.equal(await page.locator("skyforge-foreman").evaluate(el=>getComputedStyle(el).pointerEvents),"none");
     await page.getByRole('tab', {name: 'Calendar'}).click();
     await page.waitForURL(/calendar\.html/);
