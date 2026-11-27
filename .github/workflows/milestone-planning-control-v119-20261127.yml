@@ -12,13 +12,13 @@ concurrency:
   cancel-in-progress: false
 env:
   KERNEL_SHA: 03a415b3b0f3f784c07c05b867556971fc42b360
-  PUBLISHER_SHA: 1d097e2527cce462f0c901fc72b481a74b55d3c7
-  PUBLISHER_RUN: '45917115279'
+  PUBLISHER_SHA: 711b0762d2abbf67849ad530e94b11a7c2ad34f2
+  PUBLISHER_RUN: '45917222633'
   RELEASE_TAG: v1.19.0-skyforge-planning-control.1
   SITE: https://fabingurung.github.io/jp-scheduling-resources-management/schedules/
 jobs:
   verified-milestone:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
