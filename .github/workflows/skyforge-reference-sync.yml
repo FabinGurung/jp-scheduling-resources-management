@@ -27,7 +27,7 @@ concurrency:
 jobs:
   reference-sync-and-publish:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - name: Enforce authorized main-branch OIDC context
@@ -92,6 +92,7 @@ jobs:
             const matches=(payload.files||[]).filter(f=>f.name===title);
             if(matches.length!==1||payload.nextPageToken)throw Error('Expected exactly one authorized reference workbook: '+variable);
             if(!/^[A-Za-z0-9_-]{20,100}$/.test(matches[0].id))throw Error('Invalid source identifier: '+variable);
+            console.log('::add-mask::'+matches[0].id);
             appendFileSync(process.env.GITHUB_ENV,variable+'='+matches[0].id+'\n');
           }
           console.log('Two explicitly shared reference workbook identities validated');
