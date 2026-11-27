@@ -1,17 +1,9 @@
-# Primavera / Skyforge
+# Skyforge — construction programme
 
-[Open the live project schedule directory](https://fabingurung.github.io/jp-scheduling-resources-management/schedules/projects/).
+[Open the project directory](https://fabingurung.github.io/jp-scheduling-resources-management/schedules/projects/) · [Live source register](https://fabingurung.github.io/jp-scheduling-resources-management/schedules/resources/sources.html)
 
-Each registered project has an editable scheduling Sheet and a companion Google Doc. Use the Sheet for activities, durations, dates and dependencies. Use the Doc for scope, decisions and notes. Begin a reviewed paragraph with `[PUBLIC] ` to include it in the public project notes. Keep confidential details in the private source.
+Google Docs and Sheets are our authoritative sources for project records, calculations, code, tests and decisions. Use each project's existing scheduling Sheet and companion Doc; mark only appropriate public notes with `[PUBLIC] `. The scheduled GitHub Actions publisher reconstructs reviewed native source in a temporary workspace, validates it and publishes static Pages. Main is the publication bootstrap, not the calculation library. The historical kernel branch and releases are recovery references only.
 
-[The publishing workflow](https://github.com/FabinGurung/jp-scheduling-resources-management/actions/workflows/skyforge-reference-sync.yml) reads the registered inputs and tests the public projection before updating Pages. It can run manually and is scheduled hourly. The source files are filed under the repository's folder in `01_JP / 09 GitHub Repositories`.
+Start from the signed-in Code Source Index (gid 112) through the source register; read only the relevant native source blocks. The private roadmap (gid 110) contains module progress and audit details. No separate engine or source copy in Git is authoritative.
 
-## Federated repository boundary — A7 is an index, not this product's template owner
-
-**This repository owns** its domain-specific source, templates, workflows, documentation, tests and release history: Primavera-like task/activity schemas, schedule logic, calendars, milestones, dependencies, resource and 4D status. The catalogue at [A7](https://github.com/FabinGurung/JP_A7_System_Registry_and_Knowledge_Graph) is only the **federated service directory / metadata index** of where repositories, websites, version pointers, statuses and cross-module relationships are found. A7 is **not** a parent codebase, shared template writer, or administrator of this module's content.
-
-**Agent and automation rule:** Never create, update, synchronize or “repair” A7 code, policy, templates, catalogue records, READMEs, website or history as a side effect of work in this repository. An A7 modification requires a **separate task explicitly authorized by the user for A7**, with its own versioning and review. If an A7 listing appears stale, leave A7 unchanged and note a pending pointer correction **locally**. Resolve this repository's own live sources and approvals; do not duplicate its canonical domain files into A7. The CAD/AAD design-and-drawing template is owned by [CAD/AAD](https://github.com/FabinGurung/JP_Computer-Aided-Drawings/tree/main/governance/aad), never by A7. Existing independent domain and private-provider authorities still apply.
-
-
-## Active publication boundary (24 November 2026)
-The only scheduled complete-site publisher on main is `skyforge-reference-sync.yml`. The obsolete Narayani scheduler and five completed one-shot release definitions are preserved in Drive Archive and Version History / 000004, with the original Git commit and release tags retained. Read-only historical QA remains available. Do not invoke a legacy partial-site deployment; reconcile optional field-evidence import into the complete publisher first. Current source register: https://fabingurung.github.io/jp-scheduling-resources-management/schedules/resources/sources.html .
+A7 is a read-only federated catalogue for this task, not this product's template owner. No cross-repository mutations without separate authorization. The historical A7 manifest's working-ref routing needs a separately authorized catalogue reconciliation; for current execution use the main publisher and live source register.
