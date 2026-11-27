@@ -132,10 +132,15 @@ jobs:
         env:
           GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.skyforge-auth.outputs.access_token }}
         run: node scripts/import-primavera-docsheet-v2.mjs
-      - name: Validate and include the shared project schedule workspace
+      - name: Build and browser-test the complete shared schedule workspace
         run: |
           node scripts/build-site-docsheet-v2.mjs
           node scripts/verify-primavera-docsheet-v2.mjs
+          npm install --prefix "$RUNNER_TEMP/primavera-browser" --no-save --no-audit --no-fund playwright@1.56.1
+          "$RUNNER_TEMP/primavera-browser/node_modules/.bin/playwright" install chromium
+          NODE_PATH="$RUNNER_TEMP/primavera-browser/node_modules" node scripts/qa-primavera-browser.mjs
+      - name: Validate and include the shared project schedule workspace
+        run: |
           test ! -e dist/schedules
           mv dist-v2 dist/schedules
           node --input-type=module <<'NODE'
