@@ -216,6 +216,14 @@ jobs:
           console.log('SKYFORGE_RELEASE_MANIFEST',JSON.stringify(manifest));
           console.log('SKYFORGE_FOREMAN_RELEASE_PASS',JSON.stringify({interactive_pages:live,redirects,live_sources:r.inputs.length}));
           NODE
+      - name: Compute mixed-calendar programme and isolate legacy browser engines
+        env:
+          GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.skyforge-auth.outputs.access_token }}
+        run: |
+          python3 gallery-release/.github/source-gallery/static_publish.py dist --audit build/private/v120-calendar-static.json
+      - name: Verify static presentation after legacy isolation
+        run: |
+          NODE_PATH="$RUNNER_TEMP/primavera-browser/node_modules" node gallery-release/.github/source-gallery/static-qa.cjs dist
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
