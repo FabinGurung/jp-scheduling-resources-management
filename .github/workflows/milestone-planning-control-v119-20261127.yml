@@ -1,0 +1,100 @@
+name: Milestone · Skyforge v1.19 Planning Control
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/milestone-planning-control-v119-20261127.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: skyforge-v119-milestone
+  cancel-in-progress: false
+env:
+  KERNEL_SHA: 03a415b3b0f3f784c07c05b867556971fc42b360
+  PUBLISHER_SHA: 1d097e2527cce462f0c901fc72b481a74b55d3c7
+  PUBLISHER_RUN: '45917115279'
+  RELEASE_TAG: v1.19.0-skyforge-planning-control.1
+  SITE: https://fabingurung.github.io/jp-scheduling-resources-management/schedules/
+jobs:
+  verified-milestone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: 03a415b3b0f3f784c07c05b867556971fc42b360
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Require exact successful production publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$KERNEL_SHA"
+          gh run watch "$PUBLISHER_RUN" --exit-status --interval 5
+          gh run view "$PUBLISHER_RUN" --json conclusion,headSha,jobs > "$RUNNER_TEMP/publisher.json"
+          jq -e --arg sha "$PUBLISHER_SHA" '.conclusion=="success" and .headSha==$sha and ([.jobs[].conclusion]|all(.=="success"))' "$RUNNER_TEMP/publisher.json"
+          mkdir -p "$RUNNER_TEMP/milestone"
+          gh run download "$PUBLISHER_RUN" -n github-pages -D "$RUNNER_TEMP/milestone"
+          mkdir -p "$RUNNER_TEMP/site"
+          tar -xf "$RUNNER_TEMP/milestone/artifact.tar" -C "$RUNNER_TEMP/site"
+          cp "$RUNNER_TEMP/site/schedules/release.json" "$RUNNER_TEMP/milestone/release-manifest.json"
+          jq -e --arg k "$KERNEL_SHA" --arg p "$PUBLISHER_SHA" --arg r "$PUBLISHER_RUN" '.kernel_commit==$k and .publisher_commit==$p and .workflow_run==$r and .interactive_pages==80 and .live_sources==48' "$RUNNER_TEMP/milestone/release-manifest.json"
+      - name: Verify public HTTP routes and current release
+        run: |
+          set -euo pipefail
+          curl --fail --retry 4 --retry-all-errors --max-time 30 "$SITE/release.json" -o "$RUNNER_TEMP/live-release.json"
+          jq -e --arg k "$KERNEL_SHA" --arg p "$PUBLISHER_SHA" '.kernel_commit==$k and .publisher_commit==$p' "$RUNNER_TEMP/live-release.json"
+          curl --fail --retry 3 --max-time 30 "$SITE/data/project-index.json" -o "$RUNNER_TEMP/index.json"
+          jq -e '.projects|length==22' "$RUNNER_TEMP/index.json"
+          for path in projects/activities.html projects/gantt.html projects/calendar.html projects/milestones.html projects/packages.html projects/drawings.html projects/history.html projects/control.html resources/index.html resources/modules.html resources/sources.html; do
+            curl --fail --retry 3 --max-time 30 --silent --show-error "$SITE$path" -o /dev/null
+          done
+          echo "MILESTONE_LIVE_ROUTES_PASS"
+      - name: Full production responsive regression
+        run: |
+          npm install --prefix "$RUNNER_TEMP/primavera-browser" --no-save --no-audit --no-fund playwright@1.56.1
+          "$RUNNER_TEMP/primavera-browser/node_modules/.bin/playwright" install chromium
+          NODE_PATH="$RUNNER_TEMP/primavera-browser/node_modules" node scripts/qa-primavera-browser.mjs "$SITE"
+      - name: Freeze reproducible kernel and publisher sources
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          git archive --format=zip --output="$RUNNER_TEMP/milestone/kernel-source.zip" "$KERNEL_SHA"
+          git archive --format=zip --output="$RUNNER_TEMP/milestone/publisher-source.zip" "$PUBLISHER_SHA"
+          cd "$RUNNER_TEMP/milestone"
+          sha256sum artifact.tar kernel-source.zip publisher-source.zip release-manifest.json > SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          unzip -tq kernel-source.zip
+          unzip -tq publisher-source.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: skyforge-v119-milestone-verified
+          path: ${{ runner.temp }}/milestone
+          if-no-files-found: error
+          retention-days: 90
+      - name: Create immutable milestone tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/milestone"
+          cat > notes.md <<'NOTES'
+          # Skyforge v1.19.0 — Google-first Planning Control V1
+          Software milestone, not an approved construction schedule.
+          The complete public artifact passed 358 engine tests, calendar and source QA, responsive browser tests, 80 interactive pages and 15 redirects; 48 live Google files and 22 projects were reconciled. 999 activities and 1,531 relationships remain intact. The Python control calculation is authored in Google Docs, reviewed by AI and independently cross-checked against the existing CPM kernel.
+          Production publisher now runs full browser regression before deployment. This release verifies the exact production manifest and live responsive views. The release assets contain source snapshots, actual published artifact and checksums; no private source data or credentials are added.
+          Narayani: 64 relative span differences and nine incompatible nonzero lags, diagnostic held. Harisharan: logic-only 576 work slots, 457 zero-float activities, not an approved calendar critical path. 20 projects have no admitted schedule. Baseline, progress and crew intake remain unapproved; future calendar-aware analysis, resource leveling and variance require authoritative inputs.
+          Google Drive remains the editable control tower. GitHub remains the reproducible reviewed execution and presentation layer. No source schedule changes or approvals are implied by this software release.
+          NOTES
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Existing release; refusing to overwrite immutable assets"
+          else
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$KERNEL_SHA" --title 'Skyforge v1.19.0 · Google-first Planning Control V1' --notes-file notes.md artifact.tar kernel-source.zip publisher-source.zip release-manifest.json SHA256SUMS.txt
+          fi
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq .object.sha | grep -Fx "$KERNEL_SHA"
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json tagName,url,assets
