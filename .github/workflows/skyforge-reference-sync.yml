@@ -4,18 +4,13 @@ on:
     branches: [main]
     paths:
       - .github/workflows/skyforge-reference-sync.yml
-      - .github/source-gallery/**
   workflow_dispatch:
   schedule:
     - cron: '23 * * * *'
-  workflow_run:
-    workflows: ["Skyforge · Validate Kernel Source"]
-    types: [completed]
-    branches: [kernel-v0.2-open-source-engines]
 
 # The main-branch OIDC reader imports only the registered, explicitly shared sources.
 # No spreadsheet IDs, credentials, tokens, or private source rows are committed.
-# Site code remains on the established canonical kernel branch.
+# Native Docs are the executable source; the retired Git kernel is historical recovery only.
 permissions:
   contents: read
   id-token: write
@@ -26,19 +21,70 @@ concurrency:
 
 jobs:
   reference-sync-and-publish:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - name: Enforce authorized main-branch OIDC context
         run: test "$GITHUB_REF_NAME" = "main"
-      - uses: actions/checkout@v4
-        with:
-          ref: kernel-v0.2-open-source-engines
-          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
+      - name: Authenticate existing public-repository Google WIF reader
+        id: skyforge-auth
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/247425973072/locations/global/workloadIdentityPools/jp-pages-github/providers/github
+          service_account: jp-public-pages-reader@just-a-project-5007.iam.gserviceaccount.com
+          token_format: access_token
+          access_token_scopes: |
+            https://www.googleapis.com/auth/spreadsheets.readonly
+            https://www.googleapis.com/auth/drive.readonly
+          create_credentials_file: false
+      - name: Read exact reviewed runtime code from native Google Docs
+        env:
+          GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.skyforge-auth.outputs.access_token }}
+        run: |
+          node --input-type=module <<'NODE'
+          import {mkdirSync,writeFileSync} from 'node:fs';
+          import {join} from 'node:path';
+          import {createHash} from 'node:crypto';
+          const token=process.env.GOOGLE_OAUTH_ACCESS_TOKEN;
+          if(!token)throw Error('Read-only code source authorization unavailable');
+          const out=join(process.env.RUNNER_TEMP,'skyforge-native-code');mkdirSync(out,{recursive:true});
+          const sources=[
+            ['Skyforge V1.20 — Native Kernel Hydration and QA Overlay — Source Code V000001','runtime/hydrate-kernel.mjs','85cf2e5bc4c39e4e72c3f3780be44eb9ee686efa','hydrate-kernel.mjs'],
+            ['Skyforge V1.20 — Native Kernel Hydration and QA Overlay — Source Code V000001','scripts/qa-primavera-browser.mjs','850aee58a54d584666873d29efde32df2362a433','qa-primavera-browser.mjs'],
+            ['Skyforge V1.19 — publisher_01 — Source Code LIVE V000001','publisher/.github/source-gallery/install.py','a06d063357fb18f3f5c025da3eb95f408e5bd7b6','install.py'],
+            ['Skyforge V1.19 — publisher_01 — Source Code LIVE V000001','publisher/.github/source-gallery/source-gallery.js','20a2eb82460fa408af70253e3f8efe7dfbd38fe0','source-gallery.js'],
+            ['Skyforge V1.20 — Calendar and Static Publication — Source Code V000001','.github/source-gallery/static_publish.py','10f0b651b4efc38b29bb00ec1fdd1bf3f3973782','static_publish.py'],
+            ['Skyforge V1.20 — Publisher Workflow and Static Browser QA — Source Code V000001','.github/source-gallery/static-qa.cjs','a289e4dbb152fc6c3bf4f20b4454ef3b2a48221a','static-qa.cjs']
+          ];
+          for(const [title,sourcePath,sha,name] of sources){
+            const q=new URLSearchParams({q:"name = '"+title+"' and mimeType = 'application/vnd.google-apps.document' and trashed = false",fields:'nextPageToken,files(id,name)',pageSize:'100'});
+            const h={Authorization:'Bearer '+token};
+            const r=await fetch('https://www.googleapis.com/drive/v3/files?'+q,{headers:h,signal:AbortSignal.timeout(60000)});
+            if(!r.ok)throw Error('Native code source lookup failed HTTP '+r.status);
+            const j=await r.json();if(j.files?.length!==1||j.nextPageToken)throw Error('Expected one reviewed native code source: '+name);
+            const id=j.files[0].id;console.log('::add-mask::'+id);
+            const x=await fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(id)+'/export?mimeType=text%2Fplain',{headers:h,signal:AbortSignal.timeout(60000)});
+            if(!x.ok)throw Error('Native code export failed HTTP '+x.status);
+            const lines=(await x.text()).replace(/\r\n/g,'\n').split('\n');
+            const a=lines.indexOf('BEGIN SOURCE '+sourcePath),b=lines.indexOf('END SOURCE '+sourcePath);
+            if(a<0||b<=a)throw Error('Invalid native source block '+name);
+            let first=a+1;while(first<b&&!lines[first].startsWith('|'))first++;if(lines.slice(first,b).some(v=>!v.startsWith('|')))throw Error('Invalid native source line '+name);
+            const code=lines.slice(first,b).map(v=>v.slice(1)).join('\n');
+            const actual=createHash('sha1').update('blob '+Buffer.byteLength(code)+'\0').update(code).digest('hex');
+            if(actual!==sha)throw Error('Native code changed: AI review and checksum registration required for '+name);
+            writeFileSync(join(out,name),code);
+          }
+          console.log('SKYFORGE_NATIVE_CODE_READBACK_PASS 6 exact reviewed source files');
+          NODE
+      - name: Reconstruct complete reviewed kernel from native Google Docs
+        env:
+          GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.skyforge-auth.outputs.access_token }}
+        run: |
+          node "$RUNNER_TEMP/skyforge-native-code/hydrate-kernel.mjs" "$GITHUB_WORKSPACE"
+          cp "$RUNNER_TEMP/skyforge-native-code/qa-primavera-browser.mjs" scripts/qa-primavera-browser.mjs
       - name: Validate canonical Skyforge kernel
         run: |
           npm test
@@ -56,17 +102,6 @@ jobs:
           npm run generic:build
           npm run generic:verify
           npm run site:build
-      - name: Authenticate existing public-repository Google WIF reader
-        id: skyforge-auth
-        uses: google-github-actions/auth@v3
-        with:
-          workload_identity_provider: projects/247425973072/locations/global/workloadIdentityPools/jp-pages-github/providers/github
-          service_account: jp-public-pages-reader@just-a-project-5007.iam.gserviceaccount.com
-          token_format: access_token
-          access_token_scopes: |
-            https://www.googleapis.com/auth/spreadsheets.readonly
-            https://www.googleapis.com/auth/drive.readonly
-          create_credentials_file: false
       - name: Discover exactly the two authorized reference workbooks privately
         env:
           GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.skyforge-auth.outputs.access_token }}
@@ -159,16 +194,11 @@ jobs:
             await writeFile(path,page.slice(0,end)+link+page.slice(end));
           }
           NODE
-      - name: Check out the Pages source gallery
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          path: gallery-release
-          sparse-checkout: .github/source-gallery
-          sparse-checkout-cone-mode: false
-          persist-credentials: false
-      - name: Install the registered Google Drive source gallery
-        run: python3 gallery-release/.github/source-gallery/install.py dist jp-scheduling-resources-management
+      - name: Install the Google-Doc-authored source gallery
+        run: |
+          mkdir -p gallery-release/.github/source-gallery
+          cp "$RUNNER_TEMP/skyforge-native-code/install.py" "$RUNNER_TEMP/skyforge-native-code/source-gallery.js" gallery-release/.github/source-gallery/
+          python3 gallery-release/.github/source-gallery/install.py dist jp-scheduling-resources-management
       - name: Verify Foreman and source directory in the final combined Pages artifact
         run: |
           node --input-type=module <<'NODE'
@@ -211,44 +241,10 @@ jobs:
           const planner=await readFile('dist/schedules/assets/app.js','utf8');
           assert.ok(planner.includes('ganttScale')&&planner.includes('Work-stage overview')&&planner.includes('Selected relationships'),'Planner Gantt controls missing');
           assert.ok(mascot.includes('settleTimer')&&mascot.includes('lastSegment'),'Foreman stability correction missing');
-          const manifest={kernel_commit:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),publisher_commit:process.env.GITHUB_SHA,workflow_run:process.env.GITHUB_RUN_ID,generated_at:new Date().toISOString(),interactive_pages:live,redirects,live_sources:r.inputs.length};
+          const manifest={kernel_commit:'03a415b3b0f3f784c07c05b867556971fc42b360',kernel_source:'GOOGLE_DOCS_EXACT_SNAPSHOT',kernel_snapshot_sha256:'9e3ff1cb0ac05b3aaa7ba7cf5197902795f42984cc4c6c8ccb454abbf509eb25',publisher_commit:process.env.GITHUB_SHA,workflow_run:process.env.GITHUB_RUN_ID,generated_at:new Date().toISOString(),interactive_pages:live,redirects,live_sources:r.inputs.length};
           await writeFile('dist/schedules/release.json',JSON.stringify(manifest,null,2)+'\n');
           console.log('SKYFORGE_RELEASE_MANIFEST',JSON.stringify(manifest));
           console.log('SKYFORGE_FOREMAN_RELEASE_PASS',JSON.stringify({interactive_pages:live,redirects,live_sources:r.inputs.length}));
-          NODE
-      - name: Read exact reviewed Python and browser QA code from native Google Docs
-        env:
-          GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.skyforge-auth.outputs.access_token }}
-        run: |
-          node --input-type=module <<'NODE'
-          import {mkdirSync,writeFileSync} from 'node:fs';
-          import {join} from 'node:path';
-          import {createHash} from 'node:crypto';
-          const token=process.env.GOOGLE_OAUTH_ACCESS_TOKEN;
-          if(!token)throw Error('Read-only code source authorization unavailable');
-          const out=join(process.env.RUNNER_TEMP,'skyforge-native-code');mkdirSync(out,{recursive:true});
-          const sources=[
-            ['Skyforge V1.20 — Calendar and Static Publication — Source Code V000001','.github/source-gallery/static_publish.py','10f0b651b4efc38b29bb00ec1fdd1bf3f3973782','static_publish.py'],
-            ['Skyforge V1.20 — Publisher Workflow and Static Browser QA — Source Code V000001','.github/source-gallery/static-qa.cjs','a289e4dbb152fc6c3bf4f20b4454ef3b2a48221a','static-qa.cjs']
-          ];
-          for(const [title,sourcePath,sha,name] of sources){
-            const q=new URLSearchParams({q:"name = '"+title+"' and mimeType = 'application/vnd.google-apps.document' and trashed = false",fields:'nextPageToken,files(id,name)',pageSize:'100'});
-            const h={Authorization:'Bearer '+token};
-            const r=await fetch('https://www.googleapis.com/drive/v3/files?'+q,{headers:h,signal:AbortSignal.timeout(60000)});
-            if(!r.ok)throw Error('Native code source lookup failed HTTP '+r.status);
-            const j=await r.json();if(j.files?.length!==1||j.nextPageToken)throw Error('Expected one reviewed native code source: '+name);
-            const id=j.files[0].id;console.log('::add-mask::'+id);
-            const x=await fetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(id)+'/export?mimeType=text%2Fplain',{headers:h,signal:AbortSignal.timeout(60000)});
-            if(!x.ok)throw Error('Native code export failed HTTP '+x.status);
-            const lines=(await x.text()).replace(/\r\n/g,'\n').split('\n');
-            const a=lines.indexOf('BEGIN SOURCE '+sourcePath),b=lines.indexOf('END SOURCE '+sourcePath);
-            if(a<0||b<=a||lines.slice(a+1,b).some(v=>!v.startsWith('|')))throw Error('Invalid native source block '+name);
-            const code=lines.slice(a+1,b).map(v=>v.slice(1)).join('\n');
-            const actual=createHash('sha1').update('blob '+Buffer.byteLength(code)+'\0').update(code).digest('hex');
-            if(actual!==sha)throw Error('Native code changed: AI review and checksum registration required for '+name);
-            writeFileSync(join(out,name),code);
-          }
-          console.log('SKYFORGE_NATIVE_CODE_READBACK_PASS 2 exact reviewed source files');
           NODE
       - name: Compute mixed-calendar programme and isolate legacy browser engines
         env:
@@ -302,11 +298,11 @@ jobs:
             try{const r=await get('schedules/release.json');if(r.ok){const j=await r.json();if(j.workflow_run===process.env.GITHUB_RUN_ID){release=j;break;}}}catch{}
             await new Promise(r=>setTimeout(r,5000));
           }
-          assert.ok(release,'Expected published release not found');assert.equal(release.publisher_commit,process.env.GITHUB_SHA);assert.equal(release.public_engine_files,0);assert.equal(release.interactive_pages,14);
+          assert.ok(release,'Expected published release not found');assert.equal(release.publisher_commit,process.env.GITHUB_SHA);assert.equal(release.public_engine_files,0);assert.equal(release.interactive_pages,14);assert.equal(release.kernel_source,'GOOGLE_DOCS_EXACT_SNAPSHOT');
           for(const p of ['index.html','schedules/','schedules/projects/index.html','schedules/projects/gantt.html?project=PORT-000001','schedules/projects/calendar.html?project=PORT-000001','schedules/projects/control.html?project=PORT-000001','schedules/resources/index.html','schedules/resources/modules.html','schedules/resources/sources.html','planner.html'])assert.equal((await get(p)).status,200,p);
           const m=await (await get('schedules/data/projects/PORT-000001.json')).json();
           assert.equal(m.planning_control.scenario.state,'RELATIVE_CALENDAR');assert.equal(m.planning_control.scenario.finish,524);assert.equal(m.planning_control.scenario.zero_float_count,91);assert.equal(m.planning_control.scenario.activities.length,156);
-          assert.ok(!('relative_span_mismatches' in m.planning_control));
+          assert.ok(!('relative_span_mismatches' in m.planning_control));assert.ok(m.public_narrative.includes('The construction programme organizes activities, dependencies, work stages and milestones.'));
           assert.equal((await get('src/kernel/cpm.mjs')).status,404);
           assert.doesNotMatch(await (await get('planner.html')).text(),/<script\b/i);
           console.log('SKYFORGE_STATIC_LIVE_READBACK_PASS '+process.env.GITHUB_RUN_ID);
