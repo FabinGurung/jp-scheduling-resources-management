@@ -61,7 +61,8 @@ jobs:
             ['Skyforge V1.21 — Module B1 Baseline and Progress Control — Source Code V000001','runtime/progress_control.py','0bdf257e90884db303b28be4c85125d271899aa2','progress_control.py'],
             ['Skyforge V1.22 — Module B2a Remaining-work Forecast — Source Code V000001','runtime/forecast_control.py','5be8fc485265d570001825f5f2f5f2a5fc5a41eb','forecast_control.py'],
             ['Skyforge V1.23 — Module B2b Physical Progress and S-curves — Source Code V000001','runtime/physical_progress.py','523b04acd5f50b8fc47438df39aa237ea60d73ee','physical_progress.py'],
-            ['Skyforge V1.23 — Module B2b Physical Progress and S-curves — Source Code V000001','runtime/physical_progress_publish.py','69dfafb4936806c7dda05388060c9d5c937cc93e','physical_progress_publish.py']
+            ['Skyforge V1.23 — Module B2b Physical Progress and S-curves — Source Code V000001','runtime/physical_progress_publish.py','69dfafb4936806c7dda05388060c9d5c937cc93e','physical_progress_publish.py'],
+            ['Skyforge V1.24 — Module B2c Baseline Actual Forecast Gantt — Source Code V000001','runtime/gantt_overlay.py','35f288e7cb87257398bec6af5f6a6b228e0c5d87','gantt_overlay.py']
           ];
           for(const [title,sourcePath,sha,name] of sources){
             const q=new URLSearchParams({q:"name = '"+title+"' and mimeType = 'application/vnd.google-apps.document' and trashed = false",fields:'nextPageToken,files(id,name)',pageSize:'100'});
@@ -81,7 +82,7 @@ jobs:
             if(actual!==sha)throw Error('Native code changed: AI review and checksum registration required for '+name);
             writeFileSync(join(out,name),code);
           }
-          console.log('SKYFORGE_NATIVE_CODE_READBACK_PASS 10 exact reviewed source files');
+          console.log('SKYFORGE_NATIVE_CODE_READBACK_PASS 11 exact reviewed source files');
           NODE
       - name: Reconstruct complete reviewed kernel from native Google Docs
         env:
@@ -324,6 +325,34 @@ jobs:
           assert.ok(readFileSync('dist/schedules/assets/app.js','utf8').includes('Measured physical progress'));
           console.log('SKYFORGE_B2B_PUBLIC_CONTRACT_PASS '+index.projects.length+' models; '+available+' available');
           NODE
+      - name: Calculate accepted baseline actual forecast Gantt overlay
+        env:
+          GOOGLE_OAUTH_ACCESS_TOKEN: ${{ steps.skyforge-auth.outputs.access_token }}
+        run: |
+          python3 "$RUNNER_TEMP/skyforge-native-code/gantt_overlay.py" --self-test
+          python3 "$RUNNER_TEMP/skyforge-native-code/gantt_overlay.py" dist --audit build/private/v124-gantt-overlay.json
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          const index=JSON.parse(readFileSync('dist/schedules/data/project-index.json','utf8'));
+          let available=0;
+          for(const p of index.projects){
+            const m=JSON.parse(readFileSync('dist/schedules/data/projects/'+p.id+'.json','utf8'));
+            const x=m.gantt_overlay;
+            assert.ok(['AVAILABLE','NOT_AVAILABLE'].includes(x.state));
+            if(x.state==='NOT_AVAILABLE')assert.deepEqual(Object.keys(x),['state']);
+            else{
+              available++;assert.equal(x.activities.length,m.activities.length);
+              assert.equal(x.baseline_available,m.progress_control.baseline.state==='AVAILABLE');
+              assert.equal(x.actual_available,m.progress_control.actuals.state==='AVAILABLE');
+              assert.equal(x.forecast_available,m.forecast_control.state==='AVAILABLE');
+              for(const a of x.activities){for(const k of ['baseline','actual','forecast']){const s=a[k];if(s){assert.ok(s.start<=s.finish&&s.left>=0&&s.width>=0&&s.left+s.width<=100.00001);}}if(a.actual?.open)assert.equal(a.actual.finish,x.data_date);if(a.forecast)assert.ok(a.forecast.start>=x.data_date);}
+            }
+          }
+          assert.equal(JSON.parse(readFileSync('dist/schedules/release.json','utf8')).gantt_overlay,'B2C_NATIVE_PRECOMPUTED');
+          assert.ok(readFileSync('dist/schedules/assets/app.js','utf8').includes('ganttOverlayView();'));
+          console.log('SKYFORGE_B2C_PUBLIC_CONTRACT_PASS '+index.projects.length+' models; '+available+' available');
+          NODE
       - name: Verify static presentation after legacy isolation
         run: |
           NODE_PATH="$RUNNER_TEMP/primavera-browser/node_modules" node "$RUNNER_TEMP/skyforge-native-code/static-qa.cjs" dist
@@ -371,11 +400,11 @@ jobs:
             try{const r=await get('schedules/release.json');if(r.ok){const j=await r.json();if(j.workflow_run===process.env.GITHUB_RUN_ID){release=j;break;}}}catch{}
             await new Promise(r=>setTimeout(r,5000));
           }
-          assert.ok(release,'Expected published release not found');assert.equal(release.publisher_commit,process.env.GITHUB_SHA);assert.equal(release.public_engine_files,0);assert.equal(release.interactive_pages,14);assert.equal(release.kernel_source,'GOOGLE_DOCS_EXACT_SNAPSHOT');assert.equal(release.progress_control,'B1_NATIVE_PRECOMPUTED');assert.equal(release.forecast_control,'B2A_NATIVE_PRECOMPUTED');assert.equal(release.physical_progress,'B2B_NATIVE_PRECOMPUTED');
+          assert.ok(release,'Expected published release not found');assert.equal(release.publisher_commit,process.env.GITHUB_SHA);assert.equal(release.public_engine_files,0);assert.equal(release.interactive_pages,14);assert.equal(release.kernel_source,'GOOGLE_DOCS_EXACT_SNAPSHOT');assert.equal(release.progress_control,'B1_NATIVE_PRECOMPUTED');assert.equal(release.forecast_control,'B2A_NATIVE_PRECOMPUTED');assert.equal(release.physical_progress,'B2B_NATIVE_PRECOMPUTED');assert.equal(release.gantt_overlay,'B2C_NATIVE_PRECOMPUTED');
           for(const p of ['index.html','schedules/','schedules/projects/index.html','schedules/projects/gantt.html?project=PORT-000001','schedules/projects/calendar.html?project=PORT-000001','schedules/projects/control.html?project=PORT-000001','schedules/resources/index.html','schedules/resources/modules.html','schedules/resources/sources.html','planner.html'])assert.equal((await get(p)).status,200,p);
           const m=await (await get('schedules/data/projects/PORT-000001.json')).json();
           assert.equal(m.planning_control.scenario.state,'RELATIVE_CALENDAR');assert.equal(m.planning_control.scenario.finish,524);assert.equal(m.planning_control.scenario.zero_float_count,91);assert.equal(m.planning_control.scenario.activities.length,156);
-          assert.ok(!('relative_span_mismatches' in m.planning_control));assert.ok(m.progress_control);assert.ok(m.forecast_control);assert.ok(['AVAILABLE','NOT_AVAILABLE'].includes(m.physical_progress.state));assert.ok((await (await get('schedules/assets/app.js')).text()).includes('Measured physical progress'));assert.ok(!('intake_counts' in m.planning_settings));assert.ok(m.public_narrative.includes('The construction programme organizes activities, dependencies, work stages and milestones.'));
+          assert.ok(!('relative_span_mismatches' in m.planning_control));assert.ok(m.progress_control);assert.ok(m.forecast_control);assert.ok(['AVAILABLE','NOT_AVAILABLE'].includes(m.physical_progress.state));assert.ok(['AVAILABLE','NOT_AVAILABLE'].includes(m.gantt_overlay.state));assert.ok((await (await get('schedules/assets/app.js')).text()).includes('ganttOverlayView();'));assert.ok((await (await get('schedules/assets/app.js')).text()).includes('Measured physical progress'));assert.ok(!('intake_counts' in m.planning_settings));assert.ok(m.public_narrative.includes('The construction programme organizes activities, dependencies, work stages and milestones.'));
           assert.equal((await get('src/kernel/cpm.mjs')).status,404);
           assert.doesNotMatch(await (await get('planner.html')).text(),/<script\b/i);
           console.log('SKYFORGE_STATIC_LIVE_READBACK_PASS '+process.env.GITHUB_RUN_ID);
